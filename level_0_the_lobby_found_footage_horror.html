@@ -1,0 +1,2310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>LEVEL 0: THE LOBBY — FOUND FOOTAGE</title>
+  <!-- Reliable Three.js r128 CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap');
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #030302;
+      font-family: 'VT323', 'Share Tech Mono', monospace;
+      color: #ebe6d1;
+    }
+
+    #game-wrap {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #040403;
+    }
+
+    canvas#gl-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+
+    /* VHS / CRT Scanline & Vignette Layers */
+    #crt-scanlines {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      background:
+        linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.34) 50%),
+        linear-gradient(90deg, rgba(255, 0, 0, 0.025), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.025));
+      background-size: 100% 3px, 6px 100%;
+      box-shadow: inset 0 0 110px rgba(0, 0, 0, 0.92);
+    }
+
+    #ir-tint-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9;
+      background: radial-gradient(circle at center, rgba(16, 255, 90, 0.14) 0%, rgba(2, 42, 14, 0.55) 100%);
+      mix-blend-mode: screen;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    #dread-vignette {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 11;
+      box-shadow: inset 0 0 0px rgba(185, 0, 0, 0);
+      transition: box-shadow 0.15s ease;
+    }
+
+    #glitch-bar {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 20px;
+      top: 30%;
+      background: linear-gradient(transparent, rgba(255, 255, 255, 0.28), rgba(0, 255, 210, 0.18), transparent);
+      mix-blend-mode: screen;
+      pointer-events: none;
+      z-index: 12;
+      opacity: 0;
+    }
+
+    /* Error Banner if Three.js or WebGL fails */
+    #error-banner {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 99;
+      background: #7f1d1d;
+      border: 2px solid #f87171;
+      color: #ffffff;
+      padding: 12px 20px;
+      border-radius: 6px;
+      font-size: 20px;
+      text-align: center;
+      max-width: 90vw;
+      display: none;
+    }
+
+    /* Live Camcorder HUD */
+    #hud {
+      position: absolute;
+      inset: 0;
+      z-index: 15;
+      pointer-events: none;
+      padding: 20px 26px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-shadow: 2px 0 1px rgba(255, 0, 0, 0.55), -2px 0 1px rgba(0, 240, 255, 0.55);
+    }
+
+    .hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .rec-indicator {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 28px;
+      letter-spacing: 2px;
+    }
+
+    .rec-dot {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #ff2424;
+      box-shadow: 0 0 12px #ff2424;
+      animation: recPulse 1s infinite;
+    }
+
+    @keyframes recPulse {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0.15; }
+    }
+
+    .objective-panel {
+      text-align: center;
+      flex: 1;
+    }
+
+    .top-right-controls {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    #btn-help-toggle {
+      pointer-events: auto;
+      background: rgba(12, 12, 10, 0.82);
+      border: 1px solid rgba(235, 230, 209, 0.45);
+      color: #f3e6a0;
+      font-family: inherit;
+      font-size: 18px;
+      padding: 4px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      letter-spacing: 1px;
+    }
+
+    #btn-help-toggle:hover {
+      background: rgba(243, 230, 160, 0.2);
+    }
+
+    #help-popover {
+      pointer-events: auto;
+      background: rgba(8, 8, 7, 0.92);
+      border: 1px solid rgba(243, 230, 160, 0.4);
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 18px;
+      line-height: 1.45;
+      color: #e2dcc4;
+      max-width: 310px;
+      text-align: left;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.85);
+    }
+
+    #look-mode-pill {
+      font-size: 16px;
+      color: #94a3b8;
+      background: rgba(0, 0, 0, 0.55);
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    /* Center Reticle & Prompts */
+    #center-reticle {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #dot-reticle {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.55);
+      transition: transform 0.12s ease, background 0.12s ease;
+    }
+
+    #dot-reticle.active {
+      transform: scale(2.3);
+      background: #ff4d4d;
+      box-shadow: 0 0 12px #ff4d4d;
+    }
+
+    #interact-label {
+      font-size: 21px;
+      background: rgba(0, 0, 0, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 3px 12px;
+      border-radius: 4px;
+      opacity: 0;
+      transition: opacity 0.12s ease;
+      letter-spacing: 1px;
+    }
+
+    #subliminal-banner {
+      position: absolute;
+      top: 24%;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: clamp(22px, 3.5vw, 34px);
+      color: #ff3b3b;
+      letter-spacing: 3px;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.18s ease;
+      text-shadow: 0 0 16px rgba(255, 0, 0, 0.85);
+      pointer-events: none;
+    }
+
+    /* Bottom HUD: Camcorder Vitals & EMF-K2 Detector */
+    .hud-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 16px;
+    }
+
+    .vitals-box {
+      font-size: 20px;
+      line-height: 1.35;
+    }
+
+    .meter-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .meter-name {
+      width: 78px;
+      font-size: 18px;
+      color: #d6d0b8;
+    }
+
+    .meter-track {
+      width: 140px;
+      height: 11px;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      background: rgba(0, 0, 0, 0.65);
+      padding: 1px;
+      border-radius: 2px;
+    }
+
+    .meter-fill {
+      height: 100%;
+      width: 100%;
+      transition: width 0.1s linear, background-color 0.2s ease;
+    }
+
+    #emf-box {
+      background: rgba(14, 17, 15, 0.9);
+      border: 2px solid #3c4640;
+      border-radius: 8px;
+      padding: 10px 14px;
+      width: 210px;
+      box-shadow: 0 6px 22px rgba(0, 0, 0, 0.85);
+    }
+
+    .emf-title {
+      display: flex;
+      justify-content: space-between;
+      font-size: 16px;
+      color: #9cb0a3;
+      margin-bottom: 6px;
+      letter-spacing: 1px;
+    }
+
+    .emf-bars {
+      display: flex;
+      gap: 6px;
+    }
+
+    .emf-cell {
+      flex: 1;
+      height: 14px;
+      border-radius: 2px;
+      background: #1a201c;
+      border: 1px solid #2e3832;
+    }
+
+    .emf-cell.lit-1 { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+    .emf-cell.lit-2 { background: #84cc16; box-shadow: 0 0 8px #84cc16; }
+    .emf-cell.lit-3 { background: #eab308; box-shadow: 0 0 10px #eab308; }
+    .emf-cell.lit-4 { background: #f97316; box-shadow: 0 0 12px #f97316; }
+    .emf-cell.lit-5 { background: #ef4444; box-shadow: 0 0 15px #ef4444; }
+
+    #emf-status-text {
+      margin-top: 6px;
+      font-size: 16px;
+      text-align: center;
+      color: #a8bdb0;
+      letter-spacing: 1px;
+    }
+
+    /* Fullscreen Overlays (Start, Jumpscare, GameOver, Victory) */
+    .overlay-screen {
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      background: radial-gradient(circle at center, rgba(18, 16, 10, 0.93) 0%, rgba(3, 3, 2, 0.99) 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .tape-card {
+      max-width: 650px;
+      width: 100%;
+      background: rgba(10, 10, 8, 0.9);
+      border: 1px solid rgba(243, 230, 160, 0.35);
+      border-radius: 8px;
+      padding: 30px 26px;
+      box-shadow: 0 0 60px rgba(0, 0, 0, 0.95);
+    }
+
+    .tape-badge {
+      display: inline-block;
+      border: 1px solid #d6c578;
+      color: #d6c578;
+      padding: 2px 10px;
+      font-size: 17px;
+      letter-spacing: 2px;
+      border-radius: 3px;
+      margin-bottom: 10px;
+    }
+
+    .tape-title {
+      font-size: clamp(34px, 6vw, 54px);
+      color: #f3e6a0;
+      letter-spacing: 3px;
+      text-shadow: 3px 0 #ff1e1e, -3px 0 #00e5ff;
+      margin-bottom: 8px;
+    }
+
+    .warn-strip {
+      color: #ff4d4d;
+      font-size: 19px;
+      letter-spacing: 1.5px;
+      padding: 6px 0;
+      margin-bottom: 14px;
+      border-top: 1px dashed rgba(255, 77, 77, 0.45);
+      border-bottom: 1px dashed rgba(255, 77, 77, 0.45);
+    }
+
+    .tape-desc {
+      font-size: 20px;
+      line-height: 1.4;
+      color: #c5bfa8;
+      margin-bottom: 18px;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px 14px;
+      text-align: left;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 18px;
+      margin-bottom: 20px;
+      color: #dfd9c2;
+    }
+
+    .key-tag {
+      display: inline-block;
+      background: #23211a;
+      border: 1px solid #6e6952;
+      color: #f3e6a0;
+      padding: 0 6px;
+      border-radius: 3px;
+      margin-right: 6px;
+    }
+
+    .vhs-btn {
+      background: #f3e6a0;
+      color: #0b0b09;
+      border: none;
+      padding: 12px 34px;
+      font-family: inherit;
+      font-size: 26px;
+      font-weight: bold;
+      letter-spacing: 3px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 0 22px rgba(243, 230, 160, 0.35);
+    }
+
+    .vhs-btn:hover {
+      background: #ffffff;
+      transform: scale(1.03);
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.6);
+    }
+
+    /* Jumpscare Canvas */
+    #jumpscare-screen {
+      position: absolute;
+      inset: 0;
+      z-index: 40;
+      background: #000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Mobile / Touch Controls */
+    #touch-controls {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    #touch-stick-zone {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      width: 115px;
+      height: 115px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    .touch-btns {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .touch-action-btn {
+      background: rgba(15, 15, 14, 0.82);
+      border: 1px solid rgba(243, 230, 160, 0.45);
+      color: #f3e6a0;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 18px;
+    }
+
+    @media (pointer: coarse) {
+      #touch-controls { display: block; }
+      #emf-box { margin-bottom: 135px; transform: scale(0.85); transform-origin: bottom right; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="game-wrap">
+  <canvas id="gl-canvas"></canvas>
+
+  <!-- CRT / VHS / IR Overlays -->
+  <div id="ir-tint-overlay"></div>
+  <div id="crt-scanlines"></div>
+  <div id="dread-vignette"></div>
+  <div id="glitch-bar"></div>
+
+  <!-- Error Banner (Offline / WebGL Fallback) -->
+  <div id="error-banner"></div>
+
+  <!-- Live Camcorder HUD -->
+  <div id="hud" class="hidden">
+    <div class="hud-top">
+      <div>
+        <div class="rec-indicator">
+          <div class="rec-dot"></div>
+          <span>REC // VHS-00</span>
+        </div>
+        <div id="vhs-clock" style="font-size: 20px; color: #cfc9b2;">NOV 14 1994 03:14:00</div>
+      </div>
+
+      <div class="objective-panel">
+        <div id="fuse-counter" style="font-size: 26px; color: #ffd166;">EXIT FUSES: 0 / 5</div>
+        <div id="objective-sub" style="font-size: 19px; color: #d6d0b8;">FIND ALL 5 FUSES TO POWER THE EXIT DOOR</div>
+        <div id="posture-label" style="font-size: 17px; color: #72efdd; letter-spacing: 1px;">POSTURE: UPRIGHT</div>
+      </div>
+
+      <div class="top-right-controls">
+        <button type="button" id="btn-help-toggle">[H] CONTROLS / HELP</button>
+        <div id="look-mode-pill">LOOK: MOUSE / DRAG / ARROWS</div>
+        <div id="help-popover" class="hidden">
+          <div><span class="key-tag">WASD</span> Move through corridors</div>
+          <div><span class="key-tag">MOUSE / DRAG / ARROWS</span> Look around</div>
+          <div><span class="key-tag">SHIFT</span> Sprint (Loud footsteps)</div>
+          <div><span class="key-tag">C</span> Crouch stealth</div>
+          <div><span class="key-tag">B / RIGHT-CLICK</span> Hold breath (Silent)</div>
+          <div><span class="key-tag">F</span> Flashlight &bull; <span class="key-tag">V</span> IR Night-Vision</div>
+          <div><span class="key-tag">E / R / CLICK</span> Pick up item / Open door</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="center-reticle">
+      <div id="dot-reticle"></div>
+      <div id="interact-label">[E / CLICK] PICK UP</div>
+    </div>
+
+    <div id="subliminal-banner"></div>
+
+    <div class="hud-bottom">
+      <div class="vitals-box">
+        <div class="meter-row">
+          <span class="meter-name">BATTERY</span>
+          <div class="meter-track"><div id="bar-battery" class="meter-fill" style="background: #f3e6a0;"></div></div>
+        </div>
+        <div class="meter-row">
+          <span class="meter-name">SANITY</span>
+          <div class="meter-track"><div id="bar-sanity" class="meter-fill" style="background: #72efdd;"></div></div>
+        </div>
+        <div class="meter-row">
+          <span class="meter-name">STAMINA</span>
+          <div class="meter-track"><div id="bar-stamina" class="meter-fill" style="background: #93c5fd;"></div></div>
+        </div>
+        <div class="meter-row">
+          <span class="meter-name">OXYGEN</span>
+          <div class="meter-track"><div id="bar-oxygen" class="meter-fill" style="background: #a7f3d0;"></div></div>
+        </div>
+      </div>
+
+      <div id="emf-box">
+        <div class="emf-title">
+          <span>EMF-K2 DETECTOR</span>
+          <span id="emf-hz">60.0 Hz</span>
+        </div>
+        <div class="emf-bars">
+          <div class="emf-cell" id="emf-1"></div>
+          <div class="emf-cell" id="emf-2"></div>
+          <div class="emf-cell" id="emf-3"></div>
+          <div class="emf-cell" id="emf-4"></div>
+          <div class="emf-cell" id="emf-5"></div>
+        </div>
+        <div id="emf-status-text">SIGNAL: NOMINAL</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile / Touch Fallback -->
+  <div id="touch-controls" class="hidden">
+    <div id="touch-stick-zone"></div>
+    <div class="touch-btns">
+      <button type="button" class="touch-action-btn" id="t-flash">LIGHT [F]</button>
+      <button type="button" class="touch-action-btn" id="t-ir">IR-NV [V]</button>
+      <button type="button" class="touch-action-btn" id="t-breath">BREATH [B]</button>
+      <button type="button" class="touch-action-btn" id="t-use">USE [E]</button>
+    </div>
+  </div>
+
+  <!-- Start Screen -->
+  <div id="start-screen" class="overlay-screen">
+    <div class="tape-card">
+      <div class="tape-badge">FOUND FOOTAGE // TAPE #00-L0</div>
+      <h1 class="tape-title">LEVEL 0: THE LOBBY</h1>
+      <div class="warn-strip">&#9888; PSYCHOLOGICAL HORROR &bull; HEADPHONES RECOMMENDED</div>
+      <p class="tape-desc">
+        You noclipped out of reality into 600 million square miles of damp yellow wallpaper and maddening fluorescent hum. Recover <strong>5 Red Exit Fuses</strong> and unlock the steel exit before <strong>The Wire-Stalker</strong> finds you.
+      </p>
+      <div class="controls-grid">
+        <div><span class="key-tag">WASD</span> Move</div>
+        <div><span class="key-tag">MOUSE / DRAG / ARROWS</span> Look</div>
+        <div><span class="key-tag">SHIFT</span> Sprint &bull; <span class="key-tag">C</span> Crouch</div>
+        <div><span class="key-tag">B / R-CLICK</span> Hold Breath</div>
+        <div><span class="key-tag">F</span> Flashlight &bull; <span class="key-tag">V</span> IR Night-Vision</div>
+        <div><span class="key-tag">E / R / CLICK</span> Collect / Exit</div>
+      </div>
+      <button type="button" class="vhs-btn" id="btn-enter-level">&#9658; ENTER LEVEL 0</button>
+    </div>
+  </div>
+
+  <!-- Jumpscare Overlay -->
+  <div id="jumpscare-screen">
+    <canvas id="jumpscare-canvas"></canvas>
+  </div>
+
+  <!-- Game Over / VHS Static Death Screen -->
+  <div id="gameover-screen" class="overlay-screen hidden">
+    <div class="tape-card" style="border-color: rgba(255, 50, 50, 0.55);">
+      <div class="tape-badge" style="border-color: #ff4d4d; color: #ff4d4d;">TAPE CORRUPTED // SIGNAL LOST</div>
+      <h1 class="tape-title" style="color: #ff3b3b;">YOU WERE TAKEN</h1>
+      <p id="death-reason" class="tape-desc">
+        THE WIRE-STALKER CAUGHT YOU IN THE DARKNESS OF LEVEL 0.
+      </p>
+      <div id="death-stats" style="font-size: 22px; color: #ffd166; margin-bottom: 22px;">
+        SURVIVED: 00:00 &bull; FUSES: 0 / 5
+      </div>
+      <button type="button" class="vhs-btn" id="btn-play-again">&#8635; PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <!-- Victory Screen -->
+  <div id="victory-screen" class="overlay-screen hidden">
+    <div class="tape-card" style="border-color: rgba(114, 239, 221, 0.55);">
+      <div class="tape-badge" style="border-color: #72efdd; color: #72efdd;">EXIT THRESHOLD BREACHED</div>
+      <h1 class="tape-title" style="color: #a8f9ff;">ESCAPED LEVEL 0</h1>
+      <p class="tape-desc">
+        You bolted the heavy steel exit door behind you as long black claws scraped against the frame.
+      </p>
+      <div id="victory-stats" style="font-size: 22px; color: #ffd166; margin-bottom: 22px;">
+        SURVIVED: 00:00 &bull; SANITY: 100%
+      </div>
+      <button type="button" class="vhs-btn" id="btn-victory-replay">&#9658; PLAY AGAIN</button>
+    </div>
+  </div>
+</div>
+
+<script>
+window.addEventListener('load', () => {
+  const errorBanner = document.getElementById('error-banner');
+  function showFatalError(msg) {
+    errorBanner.textContent = msg;
+    errorBanner.style.display = 'block';
+  }
+
+  /* =========================================================================
+   * 1. BULLETPROOF THREE.JS & WEBGL INITIALIZATION
+   * ========================================================================= */
+  if (typeof THREE === 'undefined') {
+    showFatalError('ERROR: Three.js failed to load. Please check your internet connection and reload.');
+    return;
+  }
+
+  const canvas = document.getElementById('gl-canvas');
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: false,
+      powerPreference: 'high-performance'
+    });
+  } catch (err) {
+    showFatalError('ERROR: WebGL could not be initialized on this browser/device.');
+    return;
+  }
+
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = false;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x090804);
+  scene.fog = new THREE.FogExp2(0x0b0a05, 0.088);
+
+  const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 55);
+  camera.rotation.order = 'YXZ';
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  /* =========================================================================
+   * 2. CRASH-PROOF PROCEDURAL WEB AUDIO ENGINE
+   * ========================================================================= */
+  class HorrorAudioEngine {
+    constructor() {
+      this.ctx = null;
+      this.masterGain = null;
+      this.humGain = null;
+      this.humOsc = null;
+      this.initialized = false;
+      this.heartbeatTimer = 0;
+    }
+
+    unlock() {
+      try {
+        if (!this.initialized) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return;
+          this.ctx = new AudioCtx();
+          this.masterGain = this.ctx.createGain();
+          this.masterGain.gain.value = 0.72;
+          this.masterGain.connect(this.ctx.destination);
+
+          // 60Hz/120Hz Fluorescent Light Hum
+          this.humOsc = this.ctx.createOscillator();
+          this.humOsc.type = 'sawtooth';
+          this.humOsc.frequency.value = 120;
+
+          const humFilter = this.ctx.createBiquadFilter();
+          humFilter.type = 'lowpass';
+          humFilter.frequency.value = 210;
+
+          this.humGain = this.ctx.createGain();
+          this.humGain.gain.value = 0.04;
+
+          this.humOsc.connect(humFilter);
+          humFilter.connect(this.humGain);
+          this.humGain.connect(this.masterGain);
+          this.humOsc.start();
+
+          this.initialized = true;
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
+      } catch (e) {}
+    }
+
+    setHumIntensity(level) {
+      try {
+        if (!this.initialized || !this.ctx || !this.humGain) return;
+        const target = Math.max(0.005, Math.min(0.09, level * 0.06));
+        this.humGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.08);
+      } catch (e) {}
+    }
+
+    playClick(freq = 820) {
+      try {
+        if (!this.initialized || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+        osc.frequency.exponentialRampToValueAtTime(140, now + 0.045);
+        gain.gain.setValueAtTime(0.22, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 0.055);
+      } catch (e) {}
+    }
+
+    playPickup(isFuse = false) {
+      try {
+        if (!this.initialized || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const freqs = isFuse ? [260, 390, 520] : [440, 660];
+        freqs.forEach((f, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f, now + idx * 0.07);
+          gain.gain.setValueAtTime(0.24, now + idx * 0.07);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.07 + 0.24);
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(now + idx * 0.07);
+          osc.stop(now + idx * 0.07 + 0.26);
+        });
+      } catch (e) {}
+    }
+
+    playWetFootstep(isSprint = false, pan = 0, volScale = 1.0) {
+      try {
+        if (!this.initialized || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const dur = 0.09;
+        const len = Math.floor(this.ctx.sampleRate * dur);
+        const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.35));
+        }
+        const src = this.ctx.createBufferSource();
+        src.buffer = buf;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = isSprint ? 430 : 280;
+        filter.Q.value = 1.8;
+
+        const gain = this.ctx.createGain();
+        gain.gain.value = (isSprint ? 0.26 : 0.13) * volScale;
+
+        src.connect(filter);
+        filter.connect(gain);
+
+        if (this.ctx.createStereoPanner) {
+          const panner = this.ctx.createStereoPanner();
+          panner.pan.value = Math.max(-1, Math.min(1, pan));
+          gain.connect(panner);
+          panner.connect(this.masterGain);
+        } else {
+          gain.connect(this.masterGain);
+        }
+        src.start(now);
+      } catch (e) {}
+    }
+
+    playHeartbeat(intensity = 0.6) {
+      try {
+        if (!this.initialized || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [0, 0.16].forEach((offset, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(idx === 0 ? 58 : 46, now + offset);
+          osc.frequency.exponentialRampToValueAtTime(24, now + offset + 0.14);
+          gain.gain.setValueAtTime(0.32 * intensity, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.16);
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.17);
+        });
+      } catch (e) {}
+    }
+
+    playGasp() {
+      try {
+        if (!this.initialized || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const dur = 0.45;
+        const len = Math.floor(this.ctx.sampleRate * dur);
+        const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+        const ch = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) {
+          ch[i] = (Math.random() * 2 - 1) * Math.sin((i / len) * Math.PI);
+        }
+        const src = this.ctx.createBufferSource();
+        src.buffer = buf;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(480, now);
+        filter.frequency.linearRampToValueAtTime(920, now + dur);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.45, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+        src.start(now);
+      } catch (e) {}
+    }
+
+    playBoneCrack(pan = 0) {
+      try {
+        if (!this.initialized || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [0, 0.06, 0.13].forEach((offset) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(220 + Math.random() * 340, now + offset);
+          osc.frequency.exponentialRampToValueAtTime(55, now + offset + 0.04);
+          gain.gain.setValueAtTime(0.24, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.045);
+          osc.connect(gain);
+          if (this.ctx.createStereoPanner) {
+            const p = this.ctx.createStereoPanner();
+            p.pan.value = Math.max(-1, Math.min(1, pan));
+            gain.connect(p);
+            p.connect(this.masterGain);
+          } else {
+            gain.connect(this.masterGain);
+          }
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.05);
+        });
+      } catch (e) {}
+    }
+
+    playBehindYouWhisper() {
+      try {
+        if (!this.initialized || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const dur = 0.85;
+        const len = Math.floor(this.ctx.sampleRate * dur);
+        const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+        const ch = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) {
+          ch[i] = (Math.random() * 2 - 1) * Math.sin((i / len) * Math.PI);
+        }
+        const src = this.ctx.createBufferSource();
+        src.buffer = buf;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(1100, now);
+        filter.frequency.exponentialRampToValueAtTime(520, now + dur);
+        filter.Q.value = 4.0;
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.28, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+        src.start(now);
+      } catch (e) {}
+    }
+
+    playHowlerScreech() {
+      try {
+        if (!this.initialized || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [310, 465, 622].forEach((baseF) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(baseF, now);
+          osc.frequency.linearRampToValueAtTime(baseF * 1.38, now + 0.45);
+          osc.frequency.exponentialRampToValueAtTime(baseF * 0.65, now + 1.15);
+          gain.gain.setValueAtTime(0.16, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(now);
+          osc.stop(now + 1.25);
+        });
+      } catch (e) {}
+    }
+
+    playJumpscareBlast() {
+      try {
+        if (!this.initialized || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [95, 142, 285, 570, 855].forEach((f) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(f, now);
+          osc.frequency.linearRampToValueAtTime(f * 0.72, now + 1.3);
+          gain.gain.setValueAtTime(0.32, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 1.35);
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(now);
+          osc.stop(now + 1.4);
+        });
+      } catch (e) {}
+    }
+
+    silenceAll() {
+      try {
+        if (this.humGain && this.ctx) {
+          this.humGain.gain.setTargetAtTime(0.001, this.ctx.currentTime, 0.05);
+        }
+      } catch (e) {}
+    }
+  }
+
+  const audio = new HorrorAudioEngine();
+
+  /* =========================================================================
+   * 3. PROCEDURAL BACKROOMS TEXTURES & 3D ASSETS
+   * ========================================================================= */
+  function createWallpaperTexture() {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 256;
+    const g = c.getContext('2d');
+    g.fillStyle = '#b8a64c';
+    g.fillRect(0, 0, 256, 256);
+
+    // Vertical damp stripes & subtle diamond pattern
+    g.fillStyle = 'rgba(138, 121, 44, 0.35)';
+    for (let x = 0; x < 256; x += 32) {
+      g.fillRect(x, 0, 12, 256);
+    }
+    g.strokeStyle = 'rgba(92, 80, 26, 0.32)';
+    g.lineWidth = 2;
+    for (let y = 16; y < 256; y += 32) {
+      for (let x = 16; x < 256; x += 32) {
+        g.beginPath();
+        g.moveTo(x, y - 8);
+        g.lineTo(x + 6, y);
+        g.lineTo(x, y + 8);
+        g.lineTo(x - 6, y);
+        g.closePath();
+        g.stroke();
+      }
+    }
+
+    // Water stains near baseboard
+    const grad = g.createLinearGradient(0, 195, 0, 256);
+    grad.addColorStop(0, 'rgba(42, 34, 14, 0)');
+    grad.addColorStop(1, 'rgba(38, 30, 12, 0.68)');
+    g.fillStyle = grad;
+    g.fillRect(0, 195, 256, 61);
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  function createCarpetTexture() {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 256;
+    const g = c.getContext('2d');
+    g.fillStyle = '#6e5e32';
+    g.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 4500; i++) {
+      g.fillStyle = Math.random() > 0.5 ? 'rgba(42, 35, 16, 0.32)' : 'rgba(140, 122, 68, 0.25)';
+      g.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(22, 22);
+    return tex;
+  }
+
+  function createCeilingTexture() {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 256;
+    const g = c.getContext('2d');
+    g.fillStyle = '#9a9478';
+    g.fillRect(0, 0, 256, 256);
+    g.strokeStyle = '#4a4738';
+    g.lineWidth = 4;
+    g.strokeRect(2, 2, 124, 124);
+    g.strokeRect(130, 2, 124, 124);
+    g.strokeRect(2, 130, 124, 124);
+    g.strokeRect(130, 130, 124, 124);
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(22, 22);
+    return tex;
+  }
+
+  function createSecretMessageTexture(text) {
+    const c = document.createElement('canvas');
+    c.width = 512;
+    c.height = 256;
+    const g = c.getContext('2d');
+    g.clearRect(0, 0, 512, 256);
+    g.font = 'bold 42px "VT323", monospace';
+    g.fillStyle = '#4ade80';
+    g.textAlign = 'center';
+    g.fillText(text, 256, 120);
+    g.font = '28px "VT323", monospace';
+    g.fillText('>>>', 256, 175);
+    return new THREE.CanvasTexture(c);
+  }
+
+  const wallMat = new THREE.MeshLambertMaterial({ map: createWallpaperTexture() });
+  const floorMat = new THREE.MeshLambertMaterial({ map: createCarpetTexture() });
+  const ceilMat = new THREE.MeshLambertMaterial({ map: createCeilingTexture() });
+
+  // Player Lights (Flashlight + IR Night-Vision Flood)
+  const ambientLight = new THREE.AmbientLight(0x2e2a1a, 0.42);
+  scene.add(ambientLight);
+
+  const flashlight = new THREE.SpotLight(0xfff7dc, 2.5, 22, Math.PI / 5.2, 0.48, 1.35);
+  flashlight.position.set(0, 0, 0);
+  const flashTarget = new THREE.Object3D();
+  flashTarget.position.set(0, 0, -1);
+  camera.add(flashlight);
+  camera.add(flashTarget);
+  flashlight.target = flashTarget;
+
+  const irLight = new THREE.PointLight(0x34d399, 0, 18, 1.2);
+  camera.add(irLight);
+  scene.add(camera);
+
+  // Articulated Wire-Stalker Entity Mesh
+  const entityGroup = new THREE.Group();
+  const wireMat = new THREE.MeshBasicMaterial({ color: 0x050505 });
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.08, 1.45, 6), wireMat);
+  torso.position.y = 1.65;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 8, 8), wireMat);
+  head.scale.set(0.85, 1.35, 0.9);
+  head.position.y = 2.52;
+
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const leftEye = new THREE.Mesh(new THREE.SphereGeometry(0.026, 6, 6), eyeMat);
+  leftEye.position.set(-0.055, 2.54, 0.14);
+  const rightEye = new THREE.Mesh(new THREE.SphereGeometry(0.026, 6, 6), eyeMat);
+  rightEye.position.set(0.055, 2.54, 0.14);
+
+  const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.02, 1.65, 5), wireMat);
+  leftArm.position.set(-0.24, 1.55, 0.1);
+  leftArm.rotation.z = 0.14;
+  const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.02, 1.65, 5), wireMat);
+  rightArm.position.set(0.24, 1.55, 0.1);
+  rightArm.rotation.z = -0.14;
+
+  const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.03, 1.05, 5), wireMat);
+  leftLeg.position.set(-0.11, 0.52, 0);
+  const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.03, 1.05, 5), wireMat);
+  rightLeg.position.set(0.11, 0.52, 0);
+
+  entityGroup.add(torso, head, leftEye, rightEye, leftArm, rightArm, leftLeg, rightLeg);
+  scene.add(entityGroup);
+
+  /* =========================================================================
+   * 4. GAME STATE & MAZE GENERATION (BFS-VERIFIED REACHABILITY)
+   * ========================================================================= */
+  const GRID_SIZE = 19; // Odd dimension for clean recursive backtracker maze
+  const CELL_SIZE = 4.0;
+  const WALL_HEIGHT = 3.4;
+  const worldGroup = new THREE.Group();
+  scene.add(worldGroup);
+
+  const state = {
+    phase: 'START', // START, PLAYING, JUMPSCARE, GAMEOVER, VICTORY
+    elapsed: 0,
+    grid: [],
+    overheadLights: [],
+    fuses: [],
+    pickups: [],
+    irClues: [],
+    footprints: [],
+    footprintTimer: 0,
+    exitPos: new THREE.Vector3(),
+    exitLight: null,
+    exitUnlocked: false,
+    fusesCollected: 0,
+    totalFuses: 5,
+
+    // Player Vitals & Controls
+    playerPos: new THREE.Vector3(CELL_SIZE, 1.7, CELL_SIZE),
+    yaw: 0,
+    pitch: 0,
+    battery: 100,
+    sanity: 100,
+    stamina: 100,
+    oxygen: 100,
+    isCrouching: false,
+    isHoldingBreath: false,
+    flashlightOn: true,
+    irMode: false,
+    headBob: 0,
+
+    // Stalker AI & Paranormal Events
+    entityPos: new THREE.Vector3(CELL_SIZE * 15, 0, CELL_SIZE * 15),
+    entityMode: 'STALKING', // STALKING, PEEKING, HUNTING
+    entityTimer: 6,
+    lastKnownPos: null,
+    blackoutTimer: 0,
+    directorTimer: 12,
+    whisperTimer: 9,
+    jumpscareTimer: 0
+  };
+
+  function worldToCell(x, z) {
+    return {
+      gx: Math.max(0, Math.min(GRID_SIZE - 1, Math.round(x / CELL_SIZE))),
+      gz: Math.max(0, Math.min(GRID_SIZE - 1, Math.round(z / CELL_SIZE)))
+    };
+  }
+
+  function isWallCell(gx, gz) {
+    if (gx < 0 || gz < 0 || gx >= GRID_SIZE || gz >= GRID_SIZE) return true;
+    return state.grid[gz][gx] === 1;
+  }
+
+  function buildMazeLevel() {
+    while (worldGroup.children.length > 0) {
+      worldGroup.remove(worldGroup.children[0]);
+    }
+    state.overheadLights = [];
+    state.fuses = [];
+    state.pickups = [];
+    state.irClues = [];
+    state.footprints = [];
+    state.fusesCollected = 0;
+    state.exitUnlocked = false;
+    state.blackoutTimer = 0;
+
+    // 1. Initialize solid wall grid
+    state.grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(1));
+
+    // 2. Recursive Backtracker Maze Carving from (1,1)
+    const visited = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
+    function carve(cx, cz) {
+      visited[cz][cx] = true;
+      state.grid[cz][cx] = 0;
+      const dirs = [
+        [0, -2], [2, 0], [0, 2], [-2, 0]
+      ].sort(() => Math.random() - 0.5);
+
+      for (const [dx, dz] of dirs) {
+        const nx = cx + dx;
+        const nz = cz + dz;
+        if (nx > 0 && nz > 0 && nx < GRID_SIZE - 1 && nz < GRID_SIZE - 1 && !visited[nz][nx]) {
+          state.grid[cz + dz / 2][cx + dx / 2] = 0;
+          carve(nx, nz);
+        }
+      }
+    }
+    carve(1, 1);
+
+    // Add extra loops so player isn't trapped in single-path dead ends
+    for (let z = 2; z < GRID_SIZE - 2; z += 2) {
+      for (let x = 2; x < GRID_SIZE - 2; x += 2) {
+        if (Math.random() < 0.32) state.grid[z][x] = 0;
+      }
+    }
+
+    // 3. BFS Flood-Fill from (1,1) to verify 100% reachable floor cells & compute distances
+    const distMap = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(-1));
+    const queue = [{ gx: 1, gz: 1 }];
+    distMap[1][1] = 0;
+    const reachableCells = [];
+
+    while (queue.length > 0) {
+      const curr = queue.shift();
+      const d = distMap[curr.gz][curr.gx];
+      if (!(curr.gx === 1 && curr.gz === 1)) {
+        reachableCells.push({
+          gx: curr.gx,
+          gz: curr.gz,
+          dist: d,
+          pos: new THREE.Vector3(curr.gx * CELL_SIZE, 0, curr.gz * CELL_SIZE)
+        });
+      }
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = curr.gx + dx;
+        const nz = curr.gz + dz;
+        if (nx >= 0 && nz >= 0 && nx < GRID_SIZE && nz < GRID_SIZE && state.grid[nz][nx] === 0 && distMap[nz][nx] === -1) {
+          distMap[nz][nx] = d + 1;
+          queue.push({ gx: nx, gz: nz });
+        }
+      }
+    }
+
+    // Sort reachable cells farthest-first
+    reachableCells.sort((a, b) => b.dist - a.dist);
+
+    // 4. Floor & Ceiling Planes
+    const totalSpan = GRID_SIZE * CELL_SIZE;
+    const centerOffset = ((GRID_SIZE - 1) * CELL_SIZE) / 2;
+
+    const floorMesh = new THREE.Mesh(new THREE.PlaneGeometry(totalSpan, totalSpan), floorMat);
+    floorMesh.rotation.x = -Math.PI / 2;
+    floorMesh.position.set(centerOffset, 0, centerOffset);
+    worldGroup.add(floorMesh);
+
+    const ceilMesh = new THREE.Mesh(new THREE.PlaneGeometry(totalSpan, totalSpan), ceilMat);
+    ceilMesh.rotation.x = Math.PI / 2;
+    ceilMesh.position.set(centerOffset, WALL_HEIGHT, centerOffset);
+    worldGroup.add(ceilMesh);
+
+    // 5. Build Walls & Ceiling Fluorescent Panels
+    const wallGeo = new THREE.BoxGeometry(CELL_SIZE, WALL_HEIGHT, CELL_SIZE);
+    const panelGeo = new THREE.PlaneGeometry(1.4, 0.7);
+    const panelMatOn = new THREE.MeshBasicMaterial({ color: 0xfff8d6 });
+    const panelMatOff = new THREE.MeshBasicMaterial({ color: 0x2a281e });
+
+    for (let gz = 0; gz < GRID_SIZE; gz++) {
+      for (let gx = 0; gx < GRID_SIZE; gx++) {
+        const wx = gx * CELL_SIZE;
+        const wz = gz * CELL_SIZE;
+        if (state.grid[gz][gx] === 1) {
+          const wall = new THREE.Mesh(wallGeo, wallMat);
+          wall.position.set(wx, WALL_HEIGHT / 2, wz);
+          worldGroup.add(wall);
+        } else if (gx % 3 === 1 && gz % 3 === 1) {
+          const panel = new THREE.Mesh(panelGeo, panelMatOn);
+          panel.rotation.x = Math.PI / 2;
+          panel.position.set(wx, WALL_HEIGHT - 0.02, wz);
+          worldGroup.add(panel);
+
+          const ptLight = new THREE.PointLight(0xfff1be, 0.85, 11.5, 1.5);
+          ptLight.position.set(wx, WALL_HEIGHT - 0.3, wz);
+          worldGroup.add(ptLight);
+
+          state.overheadLights.push({
+            light: ptLight,
+            panel,
+            matOn: panelMatOn,
+            matOff: panelMatOff,
+            flickerPhase: Math.random() * 100,
+            broken: false
+          });
+        }
+      }
+    }
+
+    // 6. Place Exit Door at Farthest BFS-Verified Cell
+    const exitCell = reachableCells[0];
+    state.exitPos.copy(exitCell.pos);
+    const exitGroup = new THREE.Group();
+    exitGroup.position.copy(state.exitPos);
+
+    const doorFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(1.5, 2.5, 0.25),
+      new THREE.MeshLambertMaterial({ color: 0x3b423e })
+    );
+    doorFrame.position.y = 1.25;
+
+    const exitSign = new THREE.Mesh(
+      new THREE.BoxGeometry(0.75, 0.26, 0.14),
+      new THREE.MeshBasicMaterial({ color: 0xff2222 })
+    );
+    exitSign.position.set(0, 2.72, 0);
+
+    state.exitLight = new THREE.PointLight(0xff2222, 1.35, 7.5);
+    state.exitLight.position.set(0, 2.3, 0.4);
+
+    exitGroup.add(doorFrame, exitSign, state.exitLight);
+    worldGroup.add(exitGroup);
+
+    // 7. Spawn 5 Red Exit Fuses on Verified Reachable Cells
+    const step = Math.max(1, Math.floor((reachableCells.length - 4) / (state.totalFuses + 1)));
+    for (let i = 0; i < state.totalFuses; i++) {
+      const c = reachableCells[Math.min(reachableCells.length - 1, 1 + i * step)];
+      const fGroup = new THREE.Group();
+      fGroup.position.set(c.pos.x, 0.72, c.pos.z);
+
+      const core = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.11, 0.11, 0.42, 10),
+        new THREE.MeshStandardMaterial({ color: 0xff2424, emissive: 0x990000, emissiveIntensity: 0.9 })
+      );
+      const capTop = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.08, 10), new THREE.MeshBasicMaterial({ color: 0xe5e5e5 }));
+      capTop.position.y = 0.22;
+      const capBot = capTop.clone();
+      capBot.position.y = -0.22;
+      const glow = new THREE.PointLight(0xff3333, 0.85, 5.0);
+
+      fGroup.add(core, capTop, capBot, glow);
+      worldGroup.add(fGroup);
+      state.fuses.push({ mesh: fGroup, pos: fGroup.position, collected: false });
+    }
+
+    // 8. Spawn 5 Batteries + 4 Almond Waters on Verified Reachable Cells
+    const totalSupplies = 9;
+    for (let i = 0; i < totalSupplies; i++) {
+      const idx = Math.min(reachableCells.length - 1, 2 + i * Math.floor(reachableCells.length / (totalSupplies + 1)));
+      const c = reachableCells[idx];
+      const isBattery = i < 5;
+      const pGroup = new THREE.Group();
+      pGroup.position.set(c.pos.x + 0.35, 0.55, c.pos.z - 0.35);
+
+      const mesh = new THREE.Mesh(
+        isBattery ? new THREE.BoxGeometry(0.22, 0.32, 0.14) : new THREE.CylinderGeometry(0.11, 0.11, 0.36, 10),
+        new THREE.MeshStandardMaterial({
+          color: isBattery ? 0xfacc15 : 0x38bdf8,
+          emissive: isBattery ? 0x664d00 : 0x0c4a6e,
+          emissiveIntensity: 0.7
+        })
+      );
+      pGroup.add(mesh);
+      worldGroup.add(pGroup);
+      state.pickups.push({
+        mesh: pGroup,
+        pos: pGroup.position,
+        type: isBattery ? 'BATTERY' : 'ALMOND_WATER',
+        collected: false
+      });
+    }
+
+    // 9. Spawn Hidden IR Night-Vision Wall Messages
+    const secretPhrases = [
+      "DON'T TURN AROUND",
+      "IT HEARS YOUR BREATH",
+      "HOLD [B] TO HIDE",
+      "5 FUSES TO ESCAPE",
+      "KEEP MOVING"
+    ];
+    for (let i = 0; i < secretPhrases.length; i++) {
+      const c = reachableCells[Math.min(reachableCells.length - 1, 3 + i * 5)];
+      const plane = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.1, 1.05),
+        new THREE.MeshBasicMaterial({
+          map: createSecretMessageTexture(secretPhrases[i]),
+          transparent: true,
+          opacity: 0,
+          depthWrite: false
+        })
+      );
+      plane.position.set(c.pos.x, 1.55, c.pos.z);
+      plane.rotation.y = (i % 4) * (Math.PI / 2);
+      worldGroup.add(plane);
+      state.irClues.push(plane);
+    }
+
+    // 10. Place Entity Far from Player Start (1,1)
+    const spawnCell = reachableCells[Math.min(reachableCells.length - 1, 2)];
+    state.entityPos.set(spawnCell.pos.x, 0, spawnCell.pos.z);
+    entityGroup.position.copy(state.entityPos);
+  }
+
+  /* =========================================================================
+   * 5. CIRCLE-VS-AABB SLIDING COLLISION & BFS PATHFINDING
+   * ========================================================================= */
+  function resolveWallCollisions(pos, radius = 0.32) {
+    const { gx, gz } = worldToCell(pos.x, pos.z);
+    const half = CELL_SIZE * 0.5;
+
+    for (let dz = -1; dz <= 1; dz++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const cx = gx + dx;
+        const cz = gz + dz;
+        if (!isWallCell(cx, cz)) continue;
+
+        const minX = cx * CELL_SIZE - half;
+        const maxX = cx * CELL_SIZE + half;
+        const minZ = cz * CELL_SIZE - half;
+        const maxZ = cz * CELL_SIZE + half;
+
+        const closestX = Math.max(minX, Math.min(pos.x, maxX));
+        const closestZ = Math.max(minZ, Math.min(pos.z, maxZ));
+
+        const distX = pos.x - closestX;
+        const distZ = pos.z - closestZ;
+        const distSq = distX * distX + distZ * distZ;
+
+        if (distSq < radius * radius) {
+          const dist = Math.sqrt(distSq);
+          if (dist > 0.0001) {
+            const overlap = radius - dist;
+            pos.x += (distX / dist) * overlap;
+            pos.z += (distZ / dist) * overlap;
+          } else {
+            pos.x += radius;
+          }
+        }
+      }
+    }
+  }
+
+  function hasLineOfSight(fromPos, toPos) {
+    const steps = 14;
+    for (let i = 1; i < steps; i++) {
+      const t = i / steps;
+      const sx = fromPos.x + (toPos.x - fromPos.x) * t;
+      const sz = fromPos.z + (toPos.z - fromPos.z) * t;
+      const cell = worldToCell(sx, sz);
+      if (isWallCell(cell.gx, cell.gz)) return false;
+    }
+    return true;
+  }
+
+  function getNextWaypoint(fromPos, targetPos) {
+    const start = worldToCell(fromPos.x, fromPos.z);
+    const goal = worldToCell(targetPos.x, targetPos.z);
+    if (start.gx === goal.gx && start.gz === goal.gz) return targetPos.clone();
+
+    const visited = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
+    const parent = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
+    const queue = [start];
+    visited[start.gz][start.gx] = true;
+
+    while (queue.length > 0) {
+      const curr = queue.shift();
+      if (curr.gx === goal.gx && curr.gz === goal.gz) break;
+
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = curr.gx + dx;
+        const nz = curr.gz + dz;
+        if (nx >= 0 && nz >= 0 && nx < GRID_SIZE && nz < GRID_SIZE && !visited[nz][nx] && !isWallCell(nx, nz)) {
+          visited[nz][nx] = true;
+          parent[nz][nx] = curr;
+          queue.push({ gx: nx, gz: nz });
+        }
+      }
+    }
+
+    let trace = goal;
+    while (parent[trace.gz] && parent[trace.gz][trace.gx]) {
+      const prev = parent[trace.gz][trace.gx];
+      if (prev.gx === start.gx && prev.gz === start.gz) {
+        return new THREE.Vector3(trace.gx * CELL_SIZE, 0, trace.gz * CELL_SIZE);
+      }
+      trace = prev;
+    }
+    return targetPos.clone();
+  }
+
+  /* =========================================================================
+   * 6. DUAL LOOK CONTROLS (POINTER LOCK + SEAMLESS DRAG / ARROW FALLBACK)
+   * ========================================================================= */
+  const keys = {};
+  let isPointerLocked = false;
+  let isDraggingLook = false;
+  let lastDragX = 0;
+  let lastDragY = 0;
+  let touchMove = { x: 0, y: 0 };
+
+  function updateLookPill() {
+    const pill = document.getElementById('look-mode-pill');
+    pill.textContent = isPointerLocked
+      ? 'LOOK: MOUSE LOCKED'
+      : 'LOOK: CLICK-DRAG / ARROWS';
+  }
+
+  document.addEventListener('pointerlockchange', () => {
+    isPointerLocked = document.pointerLockElement === canvas;
+    updateLookPill();
+  });
+
+  function tryRequestPointerLock() {
+    try {
+      if (canvas.requestPointerLock && !isPointerLocked) {
+        const res = canvas.requestPointerLock();
+        if (res && typeof res.catch === 'function') {
+          res.catch(() => {});
+        }
+      }
+    } catch (e) {}
+  }
+
+  canvas.addEventListener('mousedown', (e) => {
+    if (state.phase !== 'PLAYING') return;
+    audio.unlock();
+
+    if (e.button === 2) {
+      keys['KeyB'] = true;
+      return;
+    }
+
+    // Attempt pointer lock smoothly without ever pausing on failure
+    if (!isPointerLocked) {
+      tryRequestPointerLock();
+    }
+    isDraggingLook = true;
+    lastDragX = e.clientX;
+    lastDragY = e.clientY;
+  });
+
+  window.addEventListener('mouseup', (e) => {
+    if (e.button === 2) {
+      keys['KeyB'] = false;
+    }
+    isDraggingLook = false;
+  });
+
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  window.addEventListener('mousemove', (e) => {
+    if (state.phase !== 'PLAYING') return;
+    const sens = 0.0024;
+    if (isPointerLocked) {
+      state.yaw -= (e.movementX || 0) * sens;
+      state.pitch = Math.max(-1.15, Math.min(1.15, state.pitch - (e.movementY || 0) * sens));
+    } else if (isDraggingLook) {
+      const dx = e.clientX - lastDragX;
+      const dy = e.clientY - lastDragY;
+      lastDragX = e.clientX;
+      lastDragY = e.clientY;
+      state.yaw -= dx * 0.0045;
+      state.pitch = Math.max(-1.15, Math.min(1.15, state.pitch - dy * 0.0045));
+    }
+  });
+
+  // Left-click quick tap triggers interaction if looking at an item
+  let clickStartPos = { x: 0, y: 0 };
+  canvas.addEventListener('pointerdown', (e) => {
+    clickStartPos = { x: e.clientX, y: e.clientY };
+  });
+  canvas.addEventListener('pointerup', (e) => {
+    if (state.phase !== 'PLAYING' || e.button !== 0) return;
+    const moved = Math.hypot(e.clientX - clickStartPos.x, e.clientY - clickStartPos.y);
+    if (moved < 6) {
+      tryInteract();
+    }
+  });
+
+  // Touch Look & Virtual Stick Support
+  let lookTouchId = null;
+  let lastTouchLook = { x: 0, y: 0 };
+  canvas.addEventListener('touchstart', (e) => {
+    if (state.phase !== 'PLAYING') return;
+    audio.unlock();
+    for (const t of e.changedTouches) {
+      if (lookTouchId === null) {
+        lookTouchId = t.identifier;
+        lastTouchLook = { x: t.clientX, y: t.clientY };
+      }
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (state.phase !== 'PLAYING') return;
+    for (const t of e.changedTouches) {
+      if (t.identifier === lookTouchId) {
+        state.yaw -= (t.clientX - lastTouchLook.x) * 0.005;
+        state.pitch = Math.max(-1.15, Math.min(1.15, state.pitch - (t.clientY - lastTouchLook.y) * 0.005));
+        lastTouchLook = { x: t.clientX, y: t.clientY };
+      }
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchend', (e) => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === lookTouchId) lookTouchId = null;
+    }
+  });
+
+  const stickZone = document.getElementById('touch-stick-zone');
+  stickZone.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    const rect = stickZone.getBoundingClientRect();
+    const t = e.touches[0];
+    const nx = ((t.clientX - rect.left) / rect.width - 0.5) * 2;
+    const ny = ((t.clientY - rect.top) / rect.height - 0.5) * 2;
+    touchMove.x = Math.max(-1, Math.min(1, nx));
+    touchMove.y = Math.max(-1, Math.min(1, ny));
+  }, { passive: false });
+  stickZone.addEventListener('touchend', () => { touchMove = { x: 0, y: 0 }; });
+
+  /* =========================================================================
+   * 7. ACTIONS, INTERACTIONS & HORROR EFFECTS
+   * ========================================================================= */
+  function toggleFlashlight() {
+    if (state.battery <= 0 && !state.flashlightOn) return;
+    state.flashlightOn = !state.flashlightOn;
+    audio.playClick(state.flashlightOn ? 920 : 620);
+  }
+
+  function toggleIRNightVision() {
+    if (state.battery <= 0 && !state.irMode) return;
+    state.irMode = !state.irMode;
+    document.getElementById('ir-tint-overlay').style.opacity = state.irMode ? '1' : '0';
+    state.irClues.forEach((c) => {
+      c.material.opacity = state.irMode ? 0.92 : 0;
+    });
+    audio.playClick(state.irMode ? 1150 : 680);
+  }
+
+  let glitchTimeout = null;
+  function triggerVhsGlitch() {
+    const bar = document.getElementById('glitch-bar');
+    bar.style.top = `${15 + Math.random() * 65}%`;
+    bar.style.opacity = '0.9';
+    clearTimeout(glitchTimeout);
+    glitchTimeout = setTimeout(() => {
+      bar.style.opacity = '0';
+    }, 180);
+  }
+
+  let subliminalTimeout = null;
+  function triggerSubliminal(msg) {
+    const el = document.getElementById('subliminal-banner');
+    el.textContent = msg;
+    el.style.opacity = '1';
+    clearTimeout(subliminalTimeout);
+    subliminalTimeout = setTimeout(() => {
+      el.style.opacity = '0';
+    }, 1900);
+  }
+
+  function getNearestInteractable() {
+    let best = null;
+    let bestDist = 2.75;
+
+    for (const f of state.fuses) {
+      if (!f.collected) {
+        const d = state.playerPos.distanceTo(f.pos);
+        if (d < bestDist) {
+          bestDist = d;
+          best = { kind: 'FUSE', obj: f, label: '[E / CLICK] TAKE EXIT FUSE' };
+        }
+      }
+    }
+
+    for (const p of state.pickups) {
+      if (!p.collected) {
+        const d = state.playerPos.distanceTo(p.pos);
+        if (d < bestDist) {
+          bestDist = d;
+          best = {
+            kind: 'PICKUP',
+            obj: p,
+            label: p.type === 'BATTERY' ? '[E / CLICK] TAKE 9V BATTERY (+45%)' : '[E / CLICK] DRINK ALMOND WATER (+40 SANITY)'
+          };
+        }
+      }
+    }
+
+    const exitDist = state.playerPos.distanceTo(state.exitPos);
+    if (exitDist < 3.1) {
+      best = {
+        kind: 'EXIT',
+        label: state.exitUnlocked
+          ? '[E / CLICK] UNLOCK & ESCAPE LEVEL 0'
+          : `EXIT LOCKED (${state.fusesCollected}/${state.totalFuses} FUSES)`
+      };
+    }
+
+    return best;
+  }
+
+  function tryInteract() {
+    const target = getNearestInteractable();
+    if (!target) return;
+
+    if (target.kind === 'FUSE') {
+      target.obj.collected = true;
+      target.obj.mesh.visible = false;
+      state.fusesCollected++;
+      audio.playPickup(true);
+      triggerVhsGlitch();
+
+      document.getElementById('fuse-counter').textContent = `EXIT FUSES: ${state.fusesCollected} / ${state.totalFuses}`;
+
+      // Break nearby lights for escalating dread
+      state.overheadLights.forEach((l) => {
+        if (l.light.position.distanceTo(state.playerPos) < 18 && Math.random() < 0.65) {
+          l.broken = true;
+        }
+      });
+
+      if (state.fusesCollected >= 2) {
+        state.entityMode = 'HUNTING';
+        state.entityTimer = 10;
+        state.lastKnownPos = state.playerPos.clone();
+        audio.playHowlerScreech();
+        triggerSubliminal('IT HEARD THE BREAKER TRIP');
+      }
+
+      if (state.fusesCollected >= state.totalFuses) {
+        state.exitUnlocked = true;
+        state.exitLight.color.setHex(0x22c55e);
+        state.exitLight.intensity = 2.4;
+        document.getElementById('objective-sub').textContent = 'EXIT POWERED! FIND THE GREEN EXIT DOOR!';
+        document.getElementById('objective-sub').style.color = '#4ade80';
+      }
+    } else if (target.kind === 'PICKUP') {
+      target.obj.collected = true;
+      target.obj.mesh.visible = false;
+      audio.playPickup(false);
+      if (target.obj.type === 'BATTERY') {
+        state.battery = Math.min(100, state.battery + 45);
+      } else {
+        state.sanity = Math.min(100, state.sanity + 40);
+      }
+    } else if (target.kind === 'EXIT' && state.exitUnlocked) {
+      triggerVictory();
+    }
+  }
+
+  window.addEventListener('keydown', (e) => {
+    keys[e.code] = true;
+    if (state.phase !== 'PLAYING') return;
+    audio.unlock();
+
+    if (e.code === 'KeyF') toggleFlashlight();
+    if (e.code === 'KeyV') toggleIRNightVision();
+    if (e.code === 'KeyE' || e.code === 'KeyR') tryInteract();
+    if (e.code === 'KeyH') {
+      document.getElementById('help-popover').classList.toggle('hidden');
+    }
+  });
+
+  window.addEventListener('keyup', (e) => {
+    keys[e.code] = false;
+  });
+
+  document.getElementById('btn-help-toggle').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('help-popover').classList.toggle('hidden');
+  });
+
+  document.getElementById('t-flash').addEventListener('click', toggleFlashlight);
+  document.getElementById('t-ir').addEventListener('click', toggleIRNightVision);
+  document.getElementById('t-use').addEventListener('click', tryInteract);
+  const tBreath = document.getElementById('t-breath');
+  tBreath.addEventListener('touchstart', (e) => { e.preventDefault(); keys['KeyB'] = true; });
+  tBreath.addEventListener('touchend', () => { keys['KeyB'] = false; });
+
+  /* =========================================================================
+   * 8. GAME LIFECYCLE: START, JUMPSCARE, GAME OVER, VICTORY (CLEAN RESET)
+   * ========================================================================= */
+  function startNewRun() {
+    audio.unlock();
+    buildMazeLevel();
+
+    // Reset all player & AI states cleanly
+    state.phase = 'PLAYING';
+    state.elapsed = 0;
+    state.playerPos.set(CELL_SIZE, 1.7, CELL_SIZE);
+    state.yaw = Math.PI; // Facing into the maze corridors
+    state.pitch = 0;
+    state.battery = 100;
+    state.sanity = 100;
+    state.stamina = 100;
+    state.oxygen = 100;
+    state.isCrouching = false;
+    state.isHoldingBreath = false;
+    state.flashlightOn = true;
+    state.irMode = false;
+    state.entityMode = 'STALKING';
+    state.entityTimer = 6;
+    state.lastKnownPos = null;
+    state.directorTimer = 12;
+    state.whisperTimer = 9;
+
+    document.getElementById('ir-tint-overlay').style.opacity = '0';
+    document.getElementById('dread-vignette').style.boxShadow = 'inset 0 0 0px rgba(185, 0, 0, 0)';
+    document.getElementById('fuse-counter').textContent = `EXIT FUSES: 0 / ${state.totalFuses}`;
+    document.getElementById('objective-sub').textContent = 'FIND ALL 5 FUSES TO POWER THE EXIT DOOR';
+    document.getElementById('objective-sub').style.color = '#d6d0b8';
+
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('gameover-screen').classList.add('hidden');
+    document.getElementById('victory-screen').classList.add('hidden');
+    document.getElementById('jumpscare-screen').style.display = 'none';
+    document.getElementById('hud').classList.remove('hidden');
+    document.getElementById('touch-controls').classList.remove('hidden');
+
+    tryRequestPointerLock();
+  }
+
+  function triggerJumpscare(reason) {
+    if (state.phase !== 'PLAYING') return;
+    state.phase = 'JUMPSCARE';
+    state.jumpscareTimer = 1.45;
+    if (document.pointerLockElement) {
+      try { document.exitPointerLock(); } catch (e) {}
+    }
+
+    audio.playJumpscareBlast();
+    document.getElementById('hud').classList.add('hidden');
+    document.getElementById('touch-controls').classList.add('hidden');
+
+    const jsScreen = document.getElementById('jumpscare-screen');
+    const jsCanvas = document.getElementById('jumpscare-canvas');
+    jsCanvas.width = window.innerWidth;
+    jsCanvas.height = window.innerHeight;
+    jsScreen.style.display = 'flex';
+
+    document.getElementById('death-reason').textContent = reason;
+    const mins = String(Math.floor(state.elapsed / 60)).padStart(2, '0');
+    const secs = String(Math.floor(state.elapsed % 60)).padStart(2, '0');
+    document.getElementById('death-stats').textContent =
+      `SURVIVED: ${mins}:${secs} • EXIT FUSES: ${state.fusesCollected} / ${state.totalFuses}`;
+  }
+
+  function renderJumpscareFrame() {
+    const jsCanvas = document.getElementById('jumpscare-canvas');
+    const ctx = jsCanvas.getContext('2d');
+    const w = jsCanvas.width;
+    const h = jsCanvas.height;
+
+    ctx.fillStyle = Math.random() > 0.25 ? '#080101' : '#2a0202';
+    ctx.fillRect(0, 0, w, h);
+
+    // VHS static noise bars
+    for (let i = 0; i < 45; i++) {
+      ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.25})`;
+      ctx.fillRect(0, Math.random() * h, w, 2 + Math.random() * 5);
+    }
+
+    const cx = w / 2 + (Math.random() - 0.5) * 44;
+    const cy = h / 2 + (Math.random() - 0.5) * 44;
+    const scale = Math.min(w, h) * 0.42;
+
+    // Towering Wire-Stalker Face Silhouette
+    ctx.fillStyle = '#020202';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, scale * 0.52, scale * 0.85, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Glowing Pinprick Eyes
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = '#ff2424';
+    ctx.shadowBlur = 24;
+    ctx.beginPath();
+    ctx.arc(cx - scale * 0.18, cy - scale * 0.15, scale * 0.055, 0, Math.PI * 2);
+    ctx.arc(cx + scale * 0.18, cy - scale * 0.15, scale * 0.055, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Screaming Jagged Maw
+    ctx.fillStyle = '#380000';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + scale * 0.28, scale * 0.22, scale * 0.36, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function triggerVictory() {
+    state.phase = 'VICTORY';
+    audio.silenceAll();
+    if (document.pointerLockElement) {
+      try { document.exitPointerLock(); } catch (e) {}
+    }
+    document.getElementById('hud').classList.add('hidden');
+    document.getElementById('touch-controls').classList.add('hidden');
+    document.getElementById('victory-screen').classList.remove('hidden');
+
+    const mins = String(Math.floor(state.elapsed / 60)).padStart(2, '0');
+    const secs = String(Math.floor(state.elapsed % 60)).padStart(2, '0');
+    document.getElementById('victory-stats').textContent =
+      `SURVIVED: ${mins}:${secs} • SANITY REMAINING: ${Math.round(state.sanity)}%`;
+  }
+
+  document.getElementById('btn-enter-level').addEventListener('click', startNewRun);
+  document.getElementById('btn-play-again').addEventListener('click', startNewRun);
+  document.getElementById('btn-victory-replay').addEventListener('click', startNewRun);
+
+  /* =========================================================================
+   * 9. STALKER AI & PARANORMAL DIRECTOR UPDATE
+   * ========================================================================= */
+  function updateEntityAndHorror(dt, elapsed) {
+    const dist = state.entityPos.distanceTo(state.playerPos);
+
+    // Detection radius shrinks dramatically when crouching or holding breath
+    let detectRange = 22 + state.fusesCollected * 2.2;
+    if (state.isCrouching) detectRange *= 0.6;
+    if (state.isHoldingBreath) detectRange *= 0.35;
+    if (!state.flashlightOn && !state.irMode) detectRange *= 0.7;
+
+    const canSee = dist < detectRange && hasLineOfSight(
+      new THREE.Vector3(state.entityPos.x, 1.7, state.entityPos.z),
+      state.playerPos
+    );
+
+    const toEntity = new THREE.Vector3().subVectors(state.entityPos, state.playerPos).normalize();
+    const lookDir = new THREE.Vector3(-Math.sin(state.yaw), 0, -Math.cos(state.yaw));
+    const playerLookingAtEntity = lookDir.dot(toEntity) > 0.78 && canSee;
+
+    state.entityTimer -= dt;
+    if (canSee && dist < 16.5) {
+      state.lastKnownPos = state.playerPos.clone();
+      if (state.entityMode !== 'HUNTING') {
+        state.entityMode = 'HUNTING';
+        state.entityTimer = 9.5;
+        audio.playHowlerScreech();
+        triggerVhsGlitch();
+      }
+    } else if (state.entityMode === 'PEEKING' && playerLookingAtEntity) {
+      // Corner-Peek Snap-Back!
+      state.entityMode = 'STALKING';
+      state.entityTimer = 5;
+      triggerVhsGlitch();
+      audio.playBoneCrack();
+      const retreat = getNextWaypoint(state.entityPos, state.exitPos);
+      state.entityPos.lerp(retreat, 0.65);
+    } else if (state.entityTimer <= 0) {
+      if (state.entityMode === 'HUNTING') {
+        state.entityMode = 'STALKING';
+        state.entityTimer = 6.5;
+      } else if (dist > 10 && dist < 24 && Math.random() < 0.38) {
+        state.entityMode = 'PEEKING';
+        state.entityTimer = 4.0;
+      } else {
+        state.entityMode = 'STALKING';
+        state.entityTimer = 6.0;
+      }
+    }
+
+    const navTarget = (canSee || state.entityMode === 'HUNTING')
+      ? state.playerPos
+      : (state.lastKnownPos || state.playerPos);
+
+    const speed = state.entityMode === 'HUNTING'
+      ? (4.35 + state.fusesCollected * 0.22)
+      : (state.entityMode === 'PEEKING' ? 0.5 : (2.45 + state.fusesCollected * 0.15));
+
+    const nextStep = getNextWaypoint(state.entityPos, navTarget);
+    const dir = new THREE.Vector3().subVectors(nextStep, state.entityPos);
+    dir.y = 0;
+    if (dir.lengthSq() > 0.01) {
+      dir.normalize();
+      state.entityPos.addScaledVector(dir, speed * dt);
+      resolveWallCollisions(state.entityPos, 0.36);
+      entityGroup.rotation.y = Math.atan2(dir.x, dir.z);
+    }
+
+    // Twitching limb animation
+    entityGroup.position.copy(state.entityPos);
+    leftArm.rotation.x = Math.sin(elapsed * 9) * 0.25;
+    rightArm.rotation.x = -Math.sin(elapsed * 9) * 0.25;
+    head.rotation.z = Math.sin(elapsed * 14) * 0.18;
+
+    // Leave IR-visible glowing footprints
+    state.footprintTimer -= dt;
+    if (state.footprintTimer <= 0) {
+      state.footprintTimer = 0.65;
+      const fp = new THREE.Mesh(
+        new THREE.CircleGeometry(0.18, 6),
+        new THREE.MeshBasicMaterial({ color: 0x4ade80, transparent: true, opacity: state.irMode ? 0.75 : 0 })
+      );
+      fp.rotation.x = -Math.PI / 2;
+      fp.position.set(state.entityPos.x, 0.02, state.entityPos.z);
+      worldGroup.add(fp);
+      state.footprints.push({ mesh: fp, life: 18 });
+    }
+
+    for (let i = state.footprints.length - 1; i >= 0; i--) {
+      const fp = state.footprints[i];
+      fp.life -= dt;
+      fp.mesh.material.opacity = state.irMode ? Math.max(0, (fp.life / 18) * 0.75) : 0;
+      if (fp.life <= 0) {
+        worldGroup.remove(fp.mesh);
+        state.footprints.splice(i, 1);
+      }
+    }
+
+    // Check catch distance
+    if (dist < 1.2) {
+      triggerJumpscare('THE WIRE-STALKER CAUGHT YOU IN THE CORRIDORS OF LEVEL 0.');
+      return;
+    }
+
+    // Paranormal Blackout Surges & Behind-You Whispers
+    state.directorTimer -= dt;
+    if (state.directorTimer <= 0) {
+      state.directorTimer = 14 + Math.random() * 10;
+      if (state.blackoutTimer <= 0) {
+        state.blackoutTimer = 7.5;
+        triggerVhsGlitch();
+        triggerSubliminal('POWER SURGE — USE FLASHLIGHT OR [V] IR-NV');
+      }
+    }
+
+    if (state.sanity < 65) {
+      state.whisperTimer -= dt;
+      if (state.whisperTimer <= 0) {
+        state.whisperTimer = 9 + Math.random() * 7;
+        audio.playBehindYouWhisper();
+        audio.playWetFootstep(false, Math.random() > 0.5 ? 0.85 : -0.85, 0.55);
+      }
+    }
+
+    // Sanity Drain & Dread Vignette
+    const inDark = !state.flashlightOn && !state.irMode;
+    const sanityLoss = (inDark ? 1.85 : 0.3) + (dist < 13 ? (13 - dist) * 0.42 : 0);
+    state.sanity = Math.max(0, state.sanity - sanityLoss * dt);
+
+    const terror = Math.max(0, Math.min(1, (14 - dist) / 14 + (100 - state.sanity) / 155));
+    document.getElementById('dread-vignette').style.boxShadow =
+      `inset 0 0 ${Math.round(terror * 150)}px rgba(185, 0, 0, ${(terror * 0.78).toFixed(2)})`;
+
+    if (terror > 0.35 || state.isHoldingBreath) {
+      audio.heartbeatTimer -= dt * (1 + terror * 1.6);
+      if (audio.heartbeatTimer <= 0) {
+        audio.heartbeatTimer = 0.82;
+        audio.playHeartbeat(Math.max(0.4, terror));
+      }
+    }
+
+    // EMF-K2 Detector Update
+    const emfLevel = dist < 5 ? 5 : dist < 9 ? 4 : dist < 14 ? 3 : dist < 20 ? 2 : 1;
+    for (let i = 1; i <= 5; i++) {
+      const cell = document.getElementById(`emf-${i}`);
+      cell.className = 'emf-cell' + (i <= emfLevel ? ` lit-${i}` : '');
+    }
+    const hz = (60 + (emfLevel - 1) * 14.5 + (Math.random() - 0.5) * 2).toFixed(1);
+    document.getElementById('emf-hz').textContent = `${hz} Hz`;
+    const statusLabels = ['NOMINAL', 'FLUCTUATION', 'ANOMALY NEAR', 'DANGER CLOSE', 'CRITICAL BREACH'];
+    document.getElementById('emf-status-text').textContent = `SIGNAL: ${statusLabels[emfLevel - 1]}`;
+  }
+
+  /* =========================================================================
+   * 10. MAIN FRAME LOOP
+   * ========================================================================= */
+  const clock = new THREE.Clock();
+
+  function updatePlaying(dt, elapsed) {
+    state.elapsed += dt;
+
+    // 1994 VHS Clock
+    const baseSec = 14 * 60 + Math.floor(state.elapsed);
+    const mins = String(Math.floor(baseSec / 60) % 60).padStart(2, '0');
+    const secs = String(baseSec % 60).padStart(2, '0');
+    document.getElementById('vhs-clock').textContent = `NOV 14 1994 03:${mins}:${secs}`;
+
+    // Keyboard Arrow-Key Camera Turn Fallback
+    const keyTurnSpeed = 2.0;
+    if (keys['ArrowLeft']) state.yaw += keyTurnSpeed * dt;
+    if (keys['ArrowRight']) state.yaw -= keyTurnSpeed * dt;
+    if (keys['ArrowUp']) state.pitch = Math.min(1.15, state.pitch + 1.3 * dt);
+    if (keys['ArrowDown']) state.pitch = Math.max(-1.15, state.pitch - 1.3 * dt);
+
+    // Movement Inputs
+    let forward = -touchMove.y;
+    let right = touchMove.x;
+    if (keys['KeyW']) forward += 1;
+    if (keys['KeyS']) forward -= 1;
+    if (keys['KeyD']) right += 1;
+    if (keys['KeyA']) right -= 1;
+
+    const isMoving = Math.abs(forward) > 0.05 || Math.abs(right) > 0.05;
+    state.isCrouching = Boolean(keys['KeyC'] || keys['ControlLeft']);
+
+    // Breath-Holding Stealth (B or Right-Click)
+    const wantsBreath = Boolean(keys['KeyB']);
+    if (wantsBreath && state.oxygen > 0) {
+      state.isHoldingBreath = true;
+      state.oxygen = Math.max(0, state.oxygen - dt * 22);
+      if (state.oxygen === 0) {
+        state.isHoldingBreath = false;
+        audio.playGasp();
+        triggerSubliminal('YOU GASPED — IT HEARD YOU');
+        state.lastKnownPos = state.playerPos.clone();
+        if (state.entityPos.distanceTo(state.playerPos) < 24) {
+          state.entityMode = 'HUNTING';
+          state.entityTimer = 9;
+        }
+      }
+    } else {
+      state.isHoldingBreath = false;
+      state.oxygen = Math.min(100, state.oxygen + dt * 20);
+    }
+
+    // Sprinting & Stamina
+    const wantsSprint = Boolean(keys['ShiftLeft'] || keys['ShiftRight']) && isMoving && !state.isCrouching;
+    const isSprinting = wantsSprint && state.stamina > 2;
+    if (isSprinting) {
+      state.stamina = Math.max(0, state.stamina - dt * 28);
+      if (state.entityPos.distanceTo(state.playerPos) < 19 && state.entityMode === 'STALKING') {
+        state.entityMode = 'HUNTING';
+        state.entityTimer = 8;
+        state.lastKnownPos = state.playerPos.clone();
+      }
+    } else {
+      state.stamina = Math.min(100, state.stamina + dt * 13);
+    }
+
+    const speed = state.isCrouching ? 1.65 : (isSprinting ? 5.1 : 3.1);
+    const eyeY = state.isCrouching ? 1.05 : 1.7;
+
+    const fwdVec = new THREE.Vector3(-Math.sin(state.yaw), 0, -Math.cos(state.yaw));
+    const rightVec = new THREE.Vector3(Math.cos(state.yaw), 0, -Math.sin(state.yaw));
+    const moveVec = new THREE.Vector3()
+      .addScaledVector(fwdVec, forward)
+      .addScaledVector(rightVec, right);
+
+    if (moveVec.lengthSq() > 0.001) {
+      moveVec.normalize().multiplyScalar(speed * dt);
+      state.playerPos.add(moveVec);
+      resolveWallCollisions(state.playerPos, 0.32);
+    }
+
+    // Posture Label
+    const postureEl = document.getElementById('posture-label');
+    if (state.isHoldingBreath) {
+      postureEl.textContent = 'POSTURE: HOLDING BREATH (SILENT)';
+      postureEl.style.color = '#4ade80';
+    } else if (state.isCrouching) {
+      postureEl.textContent = 'POSTURE: CROUCHED STEALTH';
+      postureEl.style.color = '#72efdd';
+    } else if (isSprinting) {
+      postureEl.textContent = 'POSTURE: SPRINTING (LOUD)';
+      postureEl.style.color = '#f97316';
+    } else {
+      postureEl.textContent = 'POSTURE: UPRIGHT';
+      postureEl.style.color = '#cfc9b2';
+    }
+
+    // Camera Head-Bob & Low-Sanity Jitter
+    const jitter = state.sanity < 35 ? (Math.random() - 0.5) * 0.009 : 0;
+    if (isMoving) {
+      const bobRate = isSprinting ? 14 : (state.isCrouching ? 6 : 9);
+      const bobHeight = isSprinting ? 0.07 : (state.isCrouching ? 0.02 : 0.04);
+      const prevSin = Math.sin(state.headBob);
+      state.headBob += dt * bobRate;
+      const currSin = Math.sin(state.headBob);
+      if (prevSin > 0 && currSin <= 0 && !state.isCrouching) {
+        audio.playWetFootstep(isSprinting);
+      }
+      camera.position.set(state.playerPos.x, eyeY + currSin * bobHeight, state.playerPos.z);
+    } else {
+      camera.position.set(state.playerPos.x, eyeY + Math.sin(elapsed * 2) * 0.01, state.playerPos.z);
+    }
+    camera.rotation.y = state.yaw + jitter;
+    camera.rotation.x = state.pitch + jitter;
+
+    // Battery Drain & Lights
+    const drain = (state.flashlightOn ? 1.15 : 0) + (state.irMode ? 2.2 : 0);
+    if (drain > 0 && state.battery > 0) {
+      state.battery = Math.max(0, state.battery - dt * drain);
+      if (state.battery === 0) {
+        state.flashlightOn = false;
+        if (state.irMode) toggleIRNightVision();
+        audio.playClick(450);
+      }
+    }
+
+    flashlight.intensity = state.flashlightOn && state.battery > 0
+      ? (state.battery < 18 && Math.random() < 0.25 ? 0.4 : 2.5)
+      : 0;
+    irLight.intensity = state.irMode && state.battery > 0 ? 1.85 : 0;
+
+    // Overhead Fluorescent Flicker & Blackouts
+    if (state.blackoutTimer > 0) state.blackoutTimer -= dt;
+    const entityDist = state.entityPos.distanceTo(state.playerPos);
+    let activeNearLights = 0;
+
+    for (const item of state.overheadLights) {
+      const d = item.light.position.distanceTo(state.playerPos);
+      if (d > 24 || item.broken || state.blackoutTimer > 0) {
+        item.light.intensity = 0;
+        item.panel.material = item.matOff;
+        continue;
+      }
+      const strobe = (entityDist < 12 || state.entityMode === 'HUNTING')
+        ? Math.sin(elapsed * 32 + item.flickerPhase) > 0.2
+        : Math.sin(elapsed * 18 + item.flickerPhase) > -0.88;
+
+      item.light.intensity = strobe ? 0.85 : 0.05;
+      item.panel.material = strobe ? item.matOn : item.matOff;
+      if (strobe) activeNearLights++;
+    }
+    audio.setHumIntensity(activeNearLights / 6);
+
+    // Rotate Fuses & Supplies
+    state.fuses.forEach((f) => { if (!f.collected) f.mesh.rotation.y += dt * 1.8; });
+    state.pickups.forEach((p) => { if (!p.collected) p.mesh.rotation.y += dt * 1.5; });
+
+    // Update Entity & Horror Director
+    updateEntityAndHorror(dt, elapsed);
+
+    // Update HUD Bars & Interaction Prompt
+    document.getElementById('bar-battery').style.width = `${state.battery}%`;
+    document.getElementById('bar-sanity').style.width = `${state.sanity}%`;
+    document.getElementById('bar-stamina').style.width = `${state.stamina}%`;
+    document.getElementById('bar-oxygen').style.width = `${state.oxygen}%`;
+
+    const prompt = getNearestInteractable();
+    const dot = document.getElementById('dot-reticle');
+    const label = document.getElementById('interact-label');
+    if (prompt) {
+      dot.classList.add('active');
+      label.textContent = prompt.label;
+      label.style.opacity = '1';
+    } else {
+      dot.classList.remove('active');
+      label.style.opacity = '0';
+    }
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05);
+    const elapsed = clock.elapsedTime;
+
+    if (state.phase === 'PLAYING') {
+      updatePlaying(dt, elapsed);
+      renderer.render(scene, camera);
+    } else if (state.phase === 'JUMPSCARE') {
+      state.jumpscareTimer -= dt;
+      renderJumpscareFrame();
+      if (state.jumpscareTimer <= 0) {
+        state.phase = 'GAMEOVER';
+        audio.silenceAll();
+        document.getElementById('jumpscare-screen').style.display = 'none';
+        document.getElementById('gameover-screen').classList.remove('hidden');
+      }
+    } else if (state.phase === 'START') {
+      // Subtle atmospheric camera drift on title background
+      camera.position.set(CELL_SIZE, 1.7, CELL_SIZE);
+      camera.rotation.y = Math.sin(elapsed * 0.25) * 0.35;
+      renderer.render(scene, camera);
+    }
+  }
+
+  // Build initial preview maze behind title screen & start loop
+  buildMazeLevel();
+  animate();
+});
+</script>
+</body>
+</html>
