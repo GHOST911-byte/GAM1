@@ -1,0 +1,3195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>IRON MAN: MARK VII — SKY GUARDIAN (OMEGA EDITION)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Orbitron:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; user-select: none; -webkit-user-select: none; touch-action: none; }
+    html, body {
+      margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+      background: #04070f; font-family: 'Inter', sans-serif; color: #f8fafc;
+    }
+    .font-hud { font-family: 'Orbitron', sans-serif; }
+    .is-hidden { display: none !important; pointer-events: none !important; }
+
+    /* Game Canvas */
+    #gameCanvas {
+      position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 1;
+    }
+
+    /* Marvel Comic Loader */
+    #marvel-loader {
+      position: fixed; inset: 0; z-index: 100;
+      background: radial-gradient(circle at center, #991b1b 0%, #450a0a 65%, #090305 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .comic-halftone {
+      position: absolute; inset: 0; opacity: 0.22; pointer-events: none;
+      background-image: radial-gradient(#fef08a 1.5px, transparent 1.5px);
+      background-size: 12px 12px;
+    }
+    .comic-rays {
+      position: absolute; inset: -50%; opacity: 0.16; pointer-events: none;
+      background: repeating-conic-gradient(from 0deg, #fbbf24 0deg 8deg, transparent 8deg 16deg);
+      animation: spinRays 24s linear infinite;
+    }
+    @keyframes spinRays { to { transform: rotate(360deg); } }
+    .marvel-banner {
+      position: relative; z-index: 2;
+      background: linear-gradient(180deg, #dc2626 0%, #991b1b 100%);
+      border: 4px solid #fef08a;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.85), inset 0 0 24px rgba(254,240,138,0.35);
+      padding: 14px 34px; border-radius: 12px; text-align: center;
+      transform: skewX(-4deg);
+    }
+    .marvel-sheen {
+      position: absolute; inset: 0; overflow: hidden; border-radius: 8px; pointer-events: none;
+    }
+    .marvel-sheen::after {
+      content: ''; position: absolute; top: 0; left: -120%; width: 60%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+      transform: skewX(-20deg); animation: sheenSweep 2.4s infinite;
+    }
+    @keyframes sheenSweep { 0% { left: -120%; } 60%, 100% { left: 160%; } }
+
+    /* Glass Panels & Buttons */
+    .jarvis-panel {
+      background: rgba(8, 15, 32, 0.82);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      box-shadow: 0 8px 32px rgba(2, 6, 23, 0.7), inset 0 0 18px rgba(56, 189, 248, 0.08);
+    }
+    .jarvis-btn {
+      background: linear-gradient(180deg, rgba(14, 116, 144, 0.85) 0%, rgba(8, 47, 73, 0.92) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.55);
+      box-shadow: 0 4px 15px rgba(6, 182, 212, 0.25);
+      transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
+      cursor: pointer;
+    }
+    .jarvis-btn:hover { filter: brightness(1.18); box-shadow: 0 6px 20px rgba(56, 189, 248, 0.45); }
+    .jarvis-btn:active { transform: scale(0.95); }
+
+    .stark-gold-btn {
+      background: linear-gradient(180deg, #dc2626 0%, #991b1b 100%);
+      border: 2px solid #fbbf24;
+      box-shadow: 0 6px 24px rgba(220, 38, 38, 0.55), inset 0 1px 0 rgba(254, 240, 138, 0.5);
+      transition: transform 0.12s ease, filter 0.12s ease;
+      cursor: pointer;
+    }
+    .stark-gold-btn:hover { filter: brightness(1.15); }
+    .stark-gold-btn:active { transform: scale(0.96); }
+
+    /* Custom Scrollbar for Armory */
+    .armory-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .armory-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); border-radius: 999px; }
+    .armory-scroll::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.5); border-radius: 999px; }
+
+    /* Mobile Dual-Thumb Controls */
+    #mobile-ui {
+      position: fixed; inset: 0; z-index: 35; pointer-events: none;
+    }
+    #joy-zone {
+      position: absolute; left: max(16px, env(safe-area-inset-left)); bottom: max(18px, env(safe-area-inset-bottom));
+      width: 132px; height: 132px; border-radius: 9999px; pointer-events: auto;
+      background: radial-gradient(circle, rgba(56,189,248,0.16) 0%, rgba(8,15,32,0.58) 72%);
+      border: 2px solid rgba(56, 189, 248, 0.45);
+      box-shadow: 0 0 24px rgba(6, 182, 212, 0.25), inset 0 0 16px rgba(56, 189, 248, 0.2);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #joy-knob {
+      width: 52px; height: 52px; border-radius: 9999px;
+      background: radial-gradient(circle at 35% 35%, #bae6fd, #0284c7);
+      border: 2px solid #e0f2fe;
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.85);
+      transform: translate(0px, 0px);
+      pointer-events: none;
+    }
+    #mobile-actions {
+      position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom));
+      display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none;
+    }
+    .mob-pad {
+      pointer-events: auto; border-radius: 9999px; font-family: 'Orbitron', sans-serif;
+      font-weight: 800; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; backdrop-filter: blur(8px); transition: transform 0.08s ease;
+    }
+    .mob-pad:active { transform: scale(0.92); }
+    @keyframes pulseReady {
+      0%, 100% { box-shadow: 0 0 14px rgba(56,189,248,0.6), inset 0 0 10px rgba(251,191,36,0.5); }
+      50% { box-shadow: 0 0 28px rgba(251,191,36,0.95), inset 0 0 16px rgba(56,189,248,0.85); }
+    }
+    .unibeam-ready { animation: pulseReady 1.1s infinite; border-color: #fbbf24 !important; }
+  </style>
+</head>
+<body>
+
+  <!-- MAIN SKY COMBAT CANVAS -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- 8-PANEL MARVEL COMIC FLIPBOOK LOADER -->
+  <div id="marvel-loader">
+    <div class="comic-rays"></div>
+    <div class="comic-halftone"></div>
+    <div class="relative z-10 flex flex-col items-center px-4 w-full max-w-lg">
+      <div class="w-full aspect-[16/10] rounded-2xl border-4 border-amber-300 bg-slate-950 shadow-2xl overflow-hidden relative mb-5">
+        <canvas id="comicCanvas" class="w-full h-full block"></canvas>
+        <div id="comicCaption" class="absolute bottom-2 left-2 right-2 bg-amber-300 text-slate-950 font-hud font-black text-xs sm:text-sm px-3 py-1 rounded border-2 border-slate-950 uppercase tracking-wider shadow">
+          ISSUE #01 • STARK DEFENSE PROTOCOL ONLINE
+        </div>
+      </div>
+
+      <div class="marvel-banner mb-4">
+        <div class="marvel-sheen"></div>
+        <div class="font-hud font-black text-2xl sm:text-4xl tracking-widest text-white drop-shadow">
+          IRON MAN
+        </div>
+        <div class="font-hud font-bold text-xs sm:text-sm tracking-[0.25em] text-amber-300 mt-0.5">
+          SKY GUARDIAN • OMEGA EDITION
+        </div>
+      </div>
+
+      <div class="w-full bg-slate-950/90 border-2 border-amber-300/70 rounded-full h-4 p-0.5 mb-3 overflow-hidden">
+        <div id="loaderBar" class="h-full rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-cyan-400 transition-all duration-150" style="width: 10%"></div>
+      </div>
+
+      <div class="flex items-center justify-between w-full text-xs font-hud text-amber-200">
+        <span id="loaderStatus">INITIALIZING ARC REACTOR...</span>
+        <button id="skipIntroBtn" class="px-3 py-1.5 rounded-lg bg-amber-400 text-slate-950 font-black hover:bg-amber-300 active:scale-95 transition cursor-pointer">
+          SKIP INTRO »
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- START OVERLAY -->
+  <div id="startOverlay" class="is-hidden fixed inset-0 z-40 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+    <div class="jarvis-panel rounded-3xl max-w-xl w-full p-6 sm:p-8 text-center relative overflow-hidden">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-400/40 text-cyan-300 text-xs font-hud tracking-widest mb-3">
+        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+        J.A.R.V.I.S. TACTICAL OS v85.0 • HARD MODE
+      </div>
+      <h1 class="font-hud font-black text-3xl sm:text-5xl tracking-wider bg-gradient-to-r from-red-400 via-amber-300 to-cyan-300 bg-clip-text text-transparent drop-shadow mb-2">
+        IRON MAN
+      </h1>
+      <p class="font-hud text-xs sm:text-sm tracking-[0.28em] text-amber-300 font-bold mb-4">
+        MARK VII — SKY GUARDIAN
+      </p>
+
+      <div class="grid grid-cols-3 gap-2 text-xs mb-6">
+        <div class="rounded-xl bg-slate-900/80 border border-cyan-500/30 p-2.5">
+          <div class="font-hud font-bold text-cyan-300">35 SUITS</div>
+          <div class="text-slate-400 text-[11px]">MCU, Legion & Doom</div>
+        </div>
+        <div class="rounded-xl bg-slate-900/80 border border-amber-500/30 p-2.5">
+          <div class="font-hud font-bold text-amber-300">HARD MODE</div>
+          <div class="text-slate-400 text-[11px]">Elite Swarms & Bosses</div>
+        </div>
+        <div class="rounded-xl bg-slate-900/80 border border-emerald-500/30 p-2.5">
+          <div class="font-hud font-bold text-emerald-300">DUAL UI</div>
+          <div class="text-slate-400 text-[11px]">Desktop + Touch HUD</div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <button id="launchBtn" class="stark-gold-btn w-full py-3.5 rounded-2xl font-hud font-black text-base sm:text-lg tracking-widest text-white">
+          🚀 LAUNCH MISSION
+        </button>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <button id="startArmoryBtn" class="jarvis-btn py-2.5 px-3 rounded-xl font-hud font-bold text-xs text-cyan-100">
+            🛡️ HALL OF ARMOR [B]
+          </button>
+          <button id="startCodesBtn" class="jarvis-btn py-2.5 px-3 rounded-xl font-hud font-bold text-xs text-amber-200">
+            🔑 OVERRIDE CODES [K]
+          </button>
+          <button id="startMobileToggleBtn" class="jarvis-btn py-2.5 px-3 rounded-xl font-hud font-bold text-xs text-emerald-200">
+            📱 MOBILE UI: AUTO
+          </button>
+        </div>
+      </div>
+
+      <p class="text-[11px] text-slate-400 mt-4 leading-relaxed">
+        WASD / Arrows to Fly • Mouse Aim & Hold Click to Fire • <span class="text-cyan-300 font-semibold">R</span> Missiles • <span class="text-amber-300 font-semibold">SPACE</span> Unibeam • <span class="text-emerald-300 font-semibold">SHIFT</span> Dash • <span class="text-purple-300 font-semibold">E</span> EMP
+      </p>
+    </div>
+  </div>
+
+  <!-- ACTIVE GAME HUD -->
+  <div id="gameHud" class="is-hidden fixed inset-x-0 top-0 z-20 p-2.5 sm:p-4 pointer-events-none flex flex-wrap items-start justify-between gap-2">
+    <!-- Top-Left Pilot Telemetry -->
+    <div class="jarvis-panel rounded-2xl p-2.5 sm:p-3.5 pointer-events-auto min-w-[215px] sm:min-w-[270px]">
+      <div class="flex items-center justify-between gap-2 mb-1.5">
+        <span id="hudSuitBadge" class="font-hud font-extrabold text-[10px] sm:text-xs px-2 py-0.5 rounded-md bg-red-600/80 border border-amber-300/60 text-amber-200 truncate max-w-[165px]">
+          MARK VII
+        </span>
+        <span id="hudWave" class="font-hud font-black text-xs sm:text-sm text-cyan-300">
+          WAVE 1
+        </span>
+      </div>
+
+      <!-- Hull Integrity Bar -->
+      <div class="mb-1.5">
+        <div class="flex justify-between text-[10px] font-hud text-slate-300 mb-0.5">
+          <span>HULL INTEGRITY</span>
+          <span id="hudHpText" class="text-emerald-300 font-bold">100 / 100</span>
+        </div>
+        <div class="w-full h-2.5 bg-slate-950/90 rounded-full overflow-hidden border border-slate-700/80">
+          <div id="hudHpBar" class="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-100" style="width: 100%"></div>
+        </div>
+      </div>
+
+      <!-- Unibeam Arc Energy Bar -->
+      <div class="mb-2">
+        <div class="flex justify-between text-[10px] font-hud text-slate-300 mb-0.5">
+          <span>CHEST UNIBEAM</span>
+          <span id="hudBeamText" class="text-amber-300 font-bold">0%</span>
+        </div>
+        <div class="w-full h-2 bg-slate-950/90 rounded-full overflow-hidden border border-slate-700/80">
+          <div id="hudBeamBar" class="h-full bg-gradient-to-r from-amber-500 via-yellow-300 to-cyan-300 transition-all duration-100" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Credits & Score -->
+      <div class="flex items-center justify-between text-[11px] font-hud pt-1 border-t border-cyan-500/20">
+        <span class="text-amber-300 font-bold">🪙 <span id="hudCredits">0</span> CR</span>
+        <span class="text-cyan-200 font-bold">PTS <span id="hudScore">0</span></span>
+      </div>
+    </div>
+
+    <!-- Boss Health Bar (Center Top when active) -->
+    <div id="bossHud" class="is-hidden jarvis-panel rounded-2xl px-4 py-2.5 border-red-500/60 min-w-[240px] sm:min-w-[340px] mx-auto">
+      <div class="flex items-center justify-between text-xs font-hud mb-1">
+        <span id="bossName" class="text-red-400 font-black tracking-wider">DREADNOUGHT COMMANDER</span>
+        <span id="bossHpText" class="text-amber-300 font-bold">100%</span>
+      </div>
+      <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-red-500/50">
+        <div id="bossHpBar" class="h-full bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 transition-all duration-100" style="width: 100%"></div>
+      </div>
+    </div>
+
+    <!-- Top-Right J.A.R.V.I.S. Tactical Pills -->
+    <div class="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 pointer-events-auto max-w-full">
+      <button id="hudAutoBtn" class="jarvis-btn px-2.5 py-1.5 rounded-xl font-hud font-bold text-[10px] sm:text-xs text-rose-300" title="Toggle Auto-Shoot [T] (Requires Code 1212129)">
+        🔒 AUTO: LOCKED [T]
+      </button>
+      <button id="hudModeBtn" class="jarvis-btn px-2.5 py-1.5 rounded-xl font-hud font-bold text-[10px] sm:text-xs text-cyan-200" title="Targeting Mode [Y]">
+        🎯 MODE: SMART [Y]
+      </button>
+      <button id="hudArmoryBtn" class="jarvis-btn px-2.5 py-1.5 rounded-xl font-hud font-bold text-[10px] sm:text-xs text-amber-300">
+        🛡️ ARMORY [B]
+      </button>
+      <button id="hudCodesBtn" class="jarvis-btn px-2.5 py-1.5 rounded-xl font-hud font-bold text-[10px] sm:text-xs text-emerald-300">
+        🔑 CODES [K]
+      </button>
+      <button id="hudMobileBtn" class="jarvis-btn px-2.5 py-1.5 rounded-xl font-hud font-bold text-[10px] sm:text-xs text-sky-200">
+        📱 MOBILE UI
+      </button>
+      <button id="hudSoundBtn" class="jarvis-btn px-2.5 py-1.5 rounded-xl font-hud font-bold text-[10px] sm:text-xs text-slate-200">
+        🔊 SFX
+      </button>
+    </div>
+  </div>
+
+  <!-- DESKTOP BOTTOM TACTICAL COOLDOWN DOCK -->
+  <div id="desktopCooldownDock" class="is-hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex items-center gap-2 sm:gap-3 jarvis-panel px-3.5 py-2 rounded-2xl">
+    <button id="dockDashBtn" class="px-3 py-1.5 rounded-xl bg-slate-900/90 border border-cyan-500/40 font-hud text-xs text-cyan-200 hover:border-cyan-300 cursor-pointer">
+      ⚡ DASH <span class="text-amber-300">[SHIFT]</span> <span id="dockDashCd" class="text-emerald-400 font-bold">RDY</span>
+    </button>
+    <button id="dockEmpBtn" class="px-3 py-1.5 rounded-xl bg-slate-900/90 border border-purple-500/40 font-hud text-xs text-purple-200 hover:border-purple-300 cursor-pointer">
+      🌀 EMP <span class="text-amber-300">[E]</span> <span id="dockEmpCd" class="text-emerald-400 font-bold">RDY</span>
+    </button>
+    <button id="dockMissileBtn" class="px-3 py-1.5 rounded-xl bg-slate-900/90 border border-rose-500/40 font-hud text-xs text-rose-200 hover:border-rose-300 cursor-pointer">
+      🚀 MISSILES <span class="text-amber-300">[R]</span> <span id="dockLocksBadge" class="px-1.5 py-0.5 rounded bg-rose-600 text-white font-bold">0</span>
+    </button>
+    <button id="dockBeamBtn" class="px-3 py-1.5 rounded-xl bg-slate-900/90 border border-amber-500/40 font-hud text-xs text-amber-200 hover:border-amber-300 cursor-pointer">
+      🔆 UNIBEAM <span class="text-amber-300">[SPACE]</span> <span id="dockBeamPct" class="text-cyan-300 font-bold">0%</span>
+    </button>
+    <!-- Dr. Doom Exclusive Reality Wave Warp Hotkeys -->
+    <div id="doomWarpDock" class="is-hidden flex items-center gap-1.5 pl-2 border-l border-emerald-500/40">
+      <button id="doomNextWaveBtn" class="px-2.5 py-1.5 rounded-xl bg-emerald-950/90 border border-emerald-400/60 font-hud text-[11px] font-bold text-emerald-300 hover:bg-emerald-900 cursor-pointer">
+        +1W [N]
+      </button>
+      <button id="doomSkip5Btn" class="px-2.5 py-1.5 rounded-xl bg-emerald-950/90 border border-emerald-400/60 font-hud text-[11px] font-bold text-emerald-300 hover:bg-emerald-900 cursor-pointer">
+        +5W [M]
+      </button>
+      <button id="doomJumpWaveBtn" class="px-2.5 py-1.5 rounded-xl bg-emerald-950/90 border border-amber-400/60 font-hud text-[11px] font-bold text-amber-300 hover:bg-emerald-900 cursor-pointer">
+        WARP [G]
+      </button>
+    </div>
+  </div>
+
+  <!-- MOBILE DUAL-THUMB TOUCH UI -->
+  <div id="mobile-ui" class="is-hidden">
+    <!-- Left Virtual Joystick -->
+    <div id="joy-zone">
+      <div id="joy-knob"></div>
+    </div>
+
+    <!-- Right Tactical Action Cluster -->
+    <div id="mobile-actions">
+      <!-- Quick Utility Row -->
+      <div class="flex items-center gap-1.5 mb-1">
+        <button id="mobArmoryBtn" class="mob-pad px-3 py-2 bg-slate-900/85 border border-amber-400/60 text-amber-300 text-[10px]">
+          SUITS
+        </button>
+        <button id="mobCodesBtn" class="mob-pad px-3 py-2 bg-slate-900/85 border border-emerald-400/60 text-emerald-300 text-[10px]">
+          CODE
+        </button>
+        <button id="mobAutoBtn" class="mob-pad px-3 py-2 bg-slate-900/85 border border-rose-400/60 text-rose-300 text-[10px]">
+          AUTO:🔒
+        </button>
+      </div>
+
+      <!-- Secondary Abilities Row -->
+      <div class="flex items-center gap-2">
+        <button id="mobEmpBtn" class="mob-pad w-14 h-14 bg-purple-950/85 border-2 border-purple-400/70 text-purple-200 text-[10px]">
+          <span>EMP</span>
+          <span id="mobEmpCd" class="text-[9px] text-emerald-300">RDY</span>
+        </button>
+        <button id="mobDashBtn" class="mob-pad w-14 h-14 bg-cyan-950/85 border-2 border-cyan-400/70 text-cyan-200 text-[10px]">
+          <span>DASH</span>
+          <span id="mobDashCd" class="text-[9px] text-emerald-300">RDY</span>
+        </button>
+        <button id="mobBeamBtn" class="mob-pad w-16 h-16 bg-amber-950/85 border-2 border-amber-400/70 text-amber-200 text-[10px]">
+          <span>BEAM</span>
+          <span id="mobBeamPct" class="text-[10px] text-cyan-300">0%</span>
+        </button>
+      </div>
+
+      <!-- Primary Fire & Missile Row -->
+      <div class="flex items-center gap-2.5 mt-0.5">
+        <button id="mobMissileBtn" class="mob-pad w-16 h-16 bg-rose-950/85 border-2 border-rose-400/80 text-rose-200 text-[10px] relative">
+          <span>MISSILE</span>
+          <span id="mobLockCount" class="mt-0.5 px-1.5 rounded-full bg-rose-500 text-white text-[10px]">0</span>
+        </button>
+        <button id="mobFireBtn" class="mob-pad w-20 h-20 bg-gradient-to-br from-red-600/90 to-amber-600/90 border-2 border-amber-200 text-white text-xs shadow-lg">
+          <span>FIRE</span>
+          <span class="text-[9px] text-amber-200">HOLD</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- J.A.R.V.I.S. HOLOGRAPHIC ARMORY & SHOP MODAL -->
+  <div id="armoryModal" class="is-hidden fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-5 bg-slate-950/85 backdrop-blur-md">
+    <div class="jarvis-panel rounded-3xl w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden">
+      <!-- Modal Header -->
+      <div class="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-3.5 border-b border-cyan-500/30 bg-slate-900/70">
+        <div>
+          <h2 class="font-hud font-black text-lg sm:text-2xl text-cyan-300 tracking-wider">
+            🛡️ J.A.R.V.I.S. HALL OF ARMOR & UPGRADES
+          </h2>
+          <p class="text-xs text-slate-400">Select Mark Variants, Upgrade Subsystems, or Deploy Tactical Consumables</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-400/50 font-hud font-bold text-xs sm:text-sm text-amber-300">
+            🪙 <span id="armoryCredits">0</span> CR
+          </div>
+          <button id="closeArmoryBtn" class="stark-gold-btn px-4 py-2 rounded-xl font-hud font-bold text-xs sm:text-sm text-white">
+            RESUME FLIGHT [ESC]
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="flex-1 overflow-y-auto armory-scroll p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Left Holographic Preview Column -->
+        <div class="lg:col-span-4 flex flex-col gap-3">
+          <div class="rounded-2xl bg-slate-950/90 border border-cyan-500/40 p-3 flex flex-col items-center relative overflow-hidden">
+            <div class="text-[10px] font-hud tracking-widest text-cyan-400 mb-1">HOLOGRAPHIC ARMOR TELEMETRY</div>
+            <canvas id="previewCanvas" width="240" height="240" class="w-48 h-48 sm:w-56 sm:h-56"></canvas>
+            <div id="previewSuitName" class="font-hud font-black text-base sm:text-lg text-amber-300 text-center mt-1">
+              MARK VII — SKY GUARDIAN
+            </div>
+            <div id="previewSuitRole" class="text-[11px] font-hud text-cyan-300 mb-1">
+              CLASSIC • BALANCED ASSAULT
+            </div>
+            <p id="previewSuitDesc" class="text-xs text-slate-300 text-center px-2 mb-3">
+              Rapid-deployment pod armor with balanced repulsors and micro-missiles.
+            </p>
+
+            <!-- Telemetry Stat Bars -->
+            <div class="w-full space-y-2 text-[11px] font-hud px-2">
+              <div>
+                <div class="flex justify-between text-slate-300 mb-0.5"><span>FIREPOWER</span><span id="statDmgVal">1.0x</span></div>
+                <div class="h-2 bg-slate-900 rounded-full overflow-hidden"><div id="statDmgBar" class="h-full bg-red-500" style="width: 30%"></div></div>
+              </div>
+              <div>
+                <div class="flex justify-between text-slate-300 mb-0.5"><span>HULL ARMOR</span><span id="statHpVal">100</span></div>
+                <div class="h-2 bg-slate-900 rounded-full overflow-hidden"><div id="statHpBar" class="h-full bg-emerald-400" style="width: 30%"></div></div>
+              </div>
+              <div>
+                <div class="flex justify-between text-slate-300 mb-0.5"><span>THRUST SPEED</span><span id="statSpdVal">1.0x</span></div>
+                <div class="h-2 bg-slate-900 rounded-full overflow-hidden"><div id="statSpdBar" class="h-full bg-cyan-400" style="width: 50%"></div></div>
+              </div>
+              <div>
+                <div class="flex justify-between text-slate-300 mb-0.5"><span>FIRE CADENCE</span><span id="statRateVal">1.0x</span></div>
+                <div class="h-2 bg-slate-900 rounded-full overflow-hidden"><div id="statRateBar" class="h-full bg-amber-400" style="width: 50%"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- God Emperor Dr. Doom Prestige Wave-50 Banner -->
+          <div class="rounded-2xl bg-gradient-to-br from-emerald-950/90 to-slate-950 border border-emerald-400/50 p-3.5">
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-hud font-black text-xs text-emerald-300">👑 DR. DOOM PRESTIGE UNLOCK</span>
+              <span id="doomMasteryCount" class="font-hud font-bold text-xs text-amber-300">0 / 34 W50</span>
+            </div>
+            <p class="text-[11px] text-slate-300 mb-2">
+              Conquer <span class="text-amber-300 font-bold">Wave 50</span> with all 34 suits to unlock <span class="text-emerald-300 font-bold">God Emperor Dr. Doom</span> (1,000,000+ HP, 1,000,000x DMG & Reality Wave Warp).
+            </p>
+            <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-emerald-500/40">
+              <div id="doomMasteryBar" class="h-full bg-gradient-to-r from-emerald-500 to-amber-300" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Catalog Column -->
+        <div class="lg:col-span-8 flex flex-col gap-5">
+          <!-- Category Filter Tabs -->
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button data-cat="ALL" class="suit-cat-btn px-3 py-1.5 rounded-xl font-hud font-bold text-xs bg-cyan-500 text-slate-950 cursor-pointer">ALL (35)</button>
+            <button data-cat="CLASSIC" class="suit-cat-btn px-3 py-1.5 rounded-xl font-hud font-bold text-xs bg-slate-800 text-slate-200 hover:bg-slate-700 cursor-pointer">CLASSIC</button>
+            <button data-cat="LEGION" class="suit-cat-btn px-3 py-1.5 rounded-xl font-hud font-bold text-xs bg-slate-800 text-slate-200 hover:bg-slate-700 cursor-pointer">IRON LEGION</button>
+            <button data-cat="MULTIVERSE" class="suit-cat-btn px-3 py-1.5 rounded-xl font-hud font-bold text-xs bg-slate-800 text-slate-200 hover:bg-slate-700 cursor-pointer">MULTIVERSE</button>
+            <button data-cat="PRESTIGE" class="suit-cat-btn px-3 py-1.5 rounded-xl font-hud font-bold text-xs bg-slate-800 text-emerald-300 hover:bg-slate-700 cursor-pointer">👑 DR. DOOM</button>
+          </div>
+
+          <!-- Suits Grid -->
+          <div>
+            <h3 class="font-hud font-bold text-xs tracking-wider text-cyan-300 uppercase mb-2">MARK VARIANTS & MULTIVERSE ARMORS</h3>
+            <div id="suitsGrid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 max-h-[290px] overflow-y-auto armory-scroll pr-1"></div>
+          </div>
+
+          <!-- 6 Subsystem Upgrades -->
+          <div>
+            <h3 class="font-hud font-bold text-xs tracking-wider text-amber-300 uppercase mb-2">STARK SUBSYSTEM UPGRADES</h3>
+            <div id="upgradesGrid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5"></div>
+          </div>
+
+          <!-- 4 Tactical Consumables -->
+          <div>
+            <h3 class="font-hud font-bold text-xs tracking-wider text-emerald-300 uppercase mb-2">TACTICAL FIELD CONSUMABLES</h3>
+            <div id="consumablesGrid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- J.A.R.V.I.S. OVERRIDE CODE TERMINAL MODAL (KNOWN CODES LIST HIDDEN) -->
+  <div id="codesModal" class="is-hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+    <div class="jarvis-panel rounded-3xl w-full max-w-md p-6 border-emerald-400/50">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-hud font-black text-lg text-emerald-300 tracking-wider">
+          🔑 J.A.R.V.I.S. OVERRIDE TERMINAL
+        </h2>
+        <button id="closeCodesBtn" class="px-3 py-1 rounded-lg bg-slate-800 text-slate-300 font-hud text-xs hover:bg-slate-700 cursor-pointer">
+          ✕
+        </button>
+      </div>
+      <p class="text-xs text-slate-300 mb-4">
+        Enter Stark Industries security ciphers, Multiverse unlock keys, or Reality Warp directives below.
+      </p>
+
+      <div class="flex gap-2 mb-3">
+        <input id="codeInput" type="text" placeholder="ENTER CIPHER..." autocomplete="off"
+          class="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-950 border border-cyan-500/50 font-hud text-sm text-cyan-200 uppercase tracking-widest focus:outline-none focus:border-amber-400" />
+        <button id="submitCodeBtn" class="stark-gold-btn px-4 py-2.5 rounded-xl font-hud font-black text-xs text-white">
+          EXECUTE CIPHER
+        </button>
+      </div>
+
+      <div id="codeFeedback" class="min-h-[38px] rounded-xl bg-slate-950/90 border border-slate-800 px-3 py-2 text-xs font-hud text-cyan-300 flex items-center">
+        AWAITING AUTHORIZATION CIPHER...
+      </div>
+
+      <!-- Hidden Known Codes List -->
+      <div id="knownCodesList" style="display: none;"></div>
+    </div>
+  </div>
+
+  <!-- MISSION END / DEBRIEF MODAL -->
+  <div id="endModal" class="is-hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+    <div class="jarvis-panel rounded-3xl w-full max-w-md p-6 text-center border-red-500/60">
+      <div class="inline-block px-3 py-1 rounded-full bg-red-500/20 border border-red-400/50 text-red-300 font-hud text-xs mb-2">
+        ARMOR INTEGRITY CRITICAL
+      </div>
+      <h2 class="font-hud font-black text-2xl sm:text-3xl text-white mb-1">MISSION DEBRIEF</h2>
+      <p class="text-xs text-slate-400 mb-5">J.A.R.V.I.S. Flight Telemetry & Combat Summary</p>
+
+      <div class="grid grid-cols-2 gap-2.5 text-left mb-6">
+        <div class="rounded-xl bg-slate-900/90 border border-slate-800 p-3">
+          <div class="text-[10px] font-hud text-slate-400">WAVE REACHED</div>
+          <div id="endWave" class="font-hud font-black text-xl text-cyan-300">1</div>
+        </div>
+        <div class="rounded-xl bg-slate-900/90 border border-slate-800 p-3">
+          <div class="text-[10px] font-hud text-slate-400">COMBAT SCORE</div>
+          <div id="endScore" class="font-hud font-black text-xl text-amber-300">0</div>
+        </div>
+        <div class="rounded-xl bg-slate-900/90 border border-slate-800 p-3">
+          <div class="text-[10px] font-hud text-slate-400">CREDITS BANKED</div>
+          <div id="endCredits" class="font-hud font-black text-xl text-emerald-300">0</div>
+        </div>
+        <div class="rounded-xl bg-slate-900/90 border border-slate-800 p-3">
+          <div class="text-[10px] font-hud text-slate-400">HOSTILES DOWNED</div>
+          <div id="endKills" class="font-hud font-black text-xl text-rose-300">0</div>
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <button id="endArmoryBtn" class="jarvis-btn flex-1 py-3 rounded-xl font-hud font-bold text-xs text-cyan-200">
+          🛡️ HALL OF ARMOR
+        </button>
+        <button id="redeployBtn" class="stark-gold-btn flex-1 py-3 rounded-xl font-hud font-black text-xs text-white">
+          🚀 REDEPLOY
+        </button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* =========================================================================
+     1. PROCEDURAL WEB AUDIO ENGINE (NO EXTERNAL URLS)
+     ========================================================================= */
+  const SoundEngine = {
+    ctx: null,
+    enabled: true,
+    init() {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) this.ctx = new AudioCtx();
+      }
+      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+    },
+    play(type) {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      if (type === 'repulsor') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(760, now);
+        osc.frequency.exponentialRampToValueAtTime(140, now + 0.09);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.start(now); osc.stop(now + 0.09);
+      } else if (type === 'missile') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.16);
+        gain.gain.setValueAtTime(0.11, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+        osc.start(now); osc.stop(now + 0.16);
+      } else if (type === 'unibeam') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(110, now);
+        osc.frequency.linearRampToValueAtTime(440, now + 0.25);
+        gain.gain.setValueAtTime(0.14, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+        osc.start(now); osc.stop(now + 0.28);
+      } else if (type === 'explosion') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.exponentialRampToValueAtTime(28, now + 0.22);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        osc.start(now); osc.stop(now + 0.22);
+      } else if (type === 'dash') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(240, now);
+        osc.frequency.exponentialRampToValueAtTime(920, now + 0.14);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+        osc.start(now); osc.stop(now + 0.14);
+      } else if (type === 'emp') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(980, now);
+        osc.frequency.exponentialRampToValueAtTime(55, now + 0.45);
+        gain.gain.setValueAtTime(0.16, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        osc.start(now); osc.stop(now + 0.45);
+      } else if (type === 'code') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.08);
+        osc.frequency.setValueAtTime(1046.5, now + 0.16);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+        osc.start(now); osc.stop(now + 0.32);
+      } else if (type === 'comic') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.exponentialRampToValueAtTime(520, now + 0.12);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.start(now); osc.stop(now + 0.12);
+      }
+    }
+  };
+
+  /* =========================================================================
+     2. COMPLETE 35-SUIT DATABASE (34 BASE SUITS + GOD EMPEROR DR. DOOM)
+     ========================================================================= */
+  const SUITS = [
+    // CLASSIC MCU SUITS
+    { id: 'mk7', name: 'MARK VII — SKY GUARDIAN', category: 'CLASSIC', role: 'RAPID DEPLOYMENT', cost: 0,
+      desc: 'Battle of New York pod armor with balanced repulsors & micro-missiles.',
+      primary: '#dc2626', secondary: '#fbbf24', glow: '#38bdf8', eye: '#e0f2fe',
+      speedMult: 1.0, dmgMult: 1.0, fireRateMult: 1.0, hpBonus: 0, repulsorColor: '#38bdf8', unibeamColor: '#38bdf8', special: 'balanced' },
+    { id: 'mk1', name: 'MARK I — CAVE PROTOTYPE', category: 'CLASSIC', role: 'HEAVY SCRAP IRON', cost: 250,
+      desc: 'Hammered steel plate armor with incendiary flame-repulsor shells.',
+      primary: '#64748b', secondary: '#94a3b8', glow: '#f97316', eye: '#fed7aa',
+      speedMult: 0.86, dmgMult: 1.35, fireRateMult: 0.85, hpBonus: 65, repulsorColor: '#f97316', unibeamColor: '#fb923c', special: 'heavy' },
+    { id: 'mk2', name: 'MARK II — SILVER CHROME', category: 'CLASSIC', role: 'HIGH-ALTITUDE TEST', cost: 350,
+      desc: 'Unpainted titanium-chrome prototype tuned for high-velocity flight.',
+      primary: '#cbd5e1', secondary: '#94a3b8', glow: '#38bdf8', eye: '#bae6fd',
+      speedMult: 1.18, dmgMult: 1.05, fireRateMult: 1.1, hpBonus: 15, repulsorColor: '#7dd3fc', unibeamColor: '#bae6fd', special: 'speed' },
+    { id: 'mk3', name: 'MARK III — GOLD-TITANIUM', category: 'CLASSIC', role: 'ICONIC COMBAT SUIT', cost: 500,
+      desc: 'Classic hot-rod red & gold-titanium alloy with crisp palm repulsors.',
+      primary: '#b91c1c', secondary: '#f59e0b', glow: '#38bdf8', eye: '#fef08a',
+      speedMult: 1.08, dmgMult: 1.2, fireRateMult: 1.12, hpBonus: 30, repulsorColor: '#38bdf8', unibeamColor: '#60a5fa', special: 'classic3' },
+    { id: 'mk5', name: 'MARK V — SUITCASE ARMOR', category: 'CLASSIC', role: 'AGILE INTERCEPTOR', cost: 650,
+      desc: 'Ultra-lightweight folding silver-and-crimson plates for rapid evasion.',
+      primary: '#dc2626', secondary: '#e2e8f0', glow: '#38bdf8', eye: '#e0f2fe',
+      speedMult: 1.28, dmgMult: 1.1, fireRateMult: 1.25, hpBonus: 10, repulsorColor: '#38bdf8', unibeamColor: '#38bdf8', special: 'agile' },
+    { id: 'mk6', name: 'MARK VI — TRIANGLE CORE', category: 'CLASSIC', role: 'VIBRANIUM ARC CORE', cost: 800,
+      desc: 'New element triangular Arc Reactor boosting Unibeam charge & output.',
+      primary: '#dc2626', secondary: '#fbbf24', glow: '#22d3ee', eye: '#cffafe',
+      speedMult: 1.12, dmgMult: 1.3, fireRateMult: 1.18, hpBonus: 40, repulsorColor: '#22d3ee', unibeamColor: '#22d3ee', special: 'triangle' },
+    { id: 'mk42', name: 'MARK XLII — PRODIGAL SON', category: 'CLASSIC', role: 'EXTREMIS PREHENSILE', cost: 1100,
+      desc: 'Autonomous gold-dominant Extremis armor with rapid burst cadence.',
+      primary: '#f59e0b', secondary: '#b91c1c', glow: '#38bdf8', eye: '#fef08a',
+      speedMult: 1.16, dmgMult: 1.38, fireRateMult: 1.3, hpBonus: 50, repulsorColor: '#38bdf8', unibeamColor: '#fbbf24', special: 'extremis' },
+    { id: 'mk44', name: 'MARK XLIV — HULKBUSTER', category: 'CLASSIC', role: 'HEAVY JUGGERNAUT', cost: 1600,
+      desc: 'Massive modular siege exo-frame with triple heavy plasma cannon bolts.',
+      primary: '#991b1b', secondary: '#f59e0b', glow: '#38bdf8', eye: '#fef08a',
+      speedMult: 0.9, dmgMult: 1.85, fireRateMult: 0.95, hpBonus: 180, repulsorColor: '#fbbf24', unibeamColor: '#f59e0b', special: 'hulkbuster' },
+    { id: 'mk49', name: 'MARK XLIX — RESCUE', category: 'CLASSIC', role: 'DORSAL LASER PODS', cost: 1850,
+      desc: 'Cobalt-and-champagne armor equipped with autonomous dorsal laser drones.',
+      primary: '#1d4ed8', secondary: '#fde68a', glow: '#60a5fa', eye: '#dbeafe',
+      speedMult: 1.24, dmgMult: 1.55, fireRateMult: 1.4, hpBonus: 85, repulsorColor: '#60a5fa', unibeamColor: '#93c5fd', special: 'rescue' },
+    { id: 'mk50', name: 'MARK L — BLEEDING EDGE', category: 'CLASSIC', role: 'NANOTECH VANGUARD', cost: 2200,
+      desc: 'Fluid nanoparticle armor manifesting twin repulsor cannons & auto-repair.',
+      primary: '#dc2626', secondary: '#fbbf24', glow: '#38bdf8', eye: '#e0f2fe',
+      speedMult: 1.3, dmgMult: 1.9, fireRateMult: 1.45, hpBonus: 110, repulsorColor: '#38bdf8', unibeamColor: '#38bdf8', special: 'nanotech' },
+    { id: 'mk85', name: 'MARK LXXXV — INFINITY PRIME', category: 'CLASSIC', role: 'ENDGAME PINNACLE', cost: 3000,
+      desc: 'Ultimate nanotech chassis channeling Infinity Stone cosmic energy.',
+      primary: '#b91c1c', secondary: '#fbbf24', glow: '#c084fc', eye: '#fef08a',
+      speedMult: 1.35, dmgMult: 2.35, fireRateMult: 1.55, hpBonus: 150, repulsorColor: '#c084fc', unibeamColor: '#fbbf24', special: 'infinity' },
+
+    // IRON LEGION & SPECIALIZED SUITS
+    { id: 'mk15', name: 'MARK XV — SNEAKY STEALTH', category: 'LEGION', role: 'CLOAK INFILTRATOR', cost: 900,
+      desc: 'Matte-obsidian radar-absorbing stealth frame with high crit precision.',
+      primary: '#1e293b', secondary: '#475569', glow: '#38bdf8', eye: '#38bdf8',
+      speedMult: 1.26, dmgMult: 1.32, fireRateMult: 1.22, hpBonus: 35, repulsorColor: '#38bdf8', unibeamColor: '#0284c7', special: 'stealth' },
+    { id: 'mk16', name: 'MARK XVI — NIGHTCLUB', category: 'LEGION', role: 'BLACK-OPS RECON', cost: 950,
+      desc: 'Sleek shadow-black recon armor firing rapid crimson plasma darts.',
+      primary: '#0f172a', secondary: '#dc2626', glow: '#ef4444', eye: '#fca5a5',
+      speedMult: 1.3, dmgMult: 1.35, fireRateMult: 1.35, hpBonus: 35, repulsorColor: '#ef4444', unibeamColor: '#dc2626', special: 'stealth' },
+    { id: 'mk17', name: 'MARK XVII — HEARTBREAKER', category: 'LEGION', role: 'ARTILLERY CHEST CORE', cost: 1150,
+      desc: 'Oversized chest RT core delivering devastating wide-beam Unibeams.',
+      primary: '#991b1b', secondary: '#fbbf24', glow: '#fbbf24', eye: '#fef08a',
+      speedMult: 1.02, dmgMult: 1.65, fireRateMult: 1.1, hpBonus: 80, repulsorColor: '#fbbf24', unibeamColor: '#fef08a', special: 'heartbreaker' },
+    { id: 'mk21', name: 'MARK XXI — MIDAS', category: 'LEGION', role: 'HIGH-ALTITUDE GOLD', cost: 1250,
+      desc: 'Pure 24-karat gold-titanium alloy granting +50% Stark Credit drops.',
+      primary: '#eab308', secondary: '#fef08a', glow: '#fde047', eye: '#ffffff',
+      speedMult: 1.22, dmgMult: 1.42, fireRateMult: 1.22, hpBonus: 55, repulsorColor: '#fde047', unibeamColor: '#fef08a', special: 'gold' },
+    { id: 'mk25', name: 'MARK XXV — STRIKER', category: 'LEGION', role: 'PNEUMATIC SIEGE', cost: 1300,
+      desc: 'Yellow-and-charcoal construction armor with seismic shockwave blasts.',
+      primary: '#ca8a04', secondary: '#334155', glow: '#facc15', eye: '#fef08a',
+      speedMult: 1.0, dmgMult: 1.7, fireRateMult: 1.05, hpBonus: 110, repulsorColor: '#facc15', unibeamColor: '#eab308', special: 'striker' },
+    { id: 'mk30', name: 'MARK XXX — BLUE STEEL', category: 'LEGION', role: 'ENHANCED ENERGY', cost: 1350,
+      desc: 'Cobalt-and-silver energy-channeling suit with twin overcharged beams.',
+      primary: '#1d4ed8', secondary: '#cbd5e1', glow: '#38bdf8', eye: '#e0f2fe',
+      speedMult: 1.18, dmgMult: 1.5, fireRateMult: 1.28, hpBonus: 65, repulsorColor: '#38bdf8', unibeamColor: '#60a5fa', special: 'bluesteel' },
+    { id: 'mk33', name: 'MARK XXXIII — SILVER CENTURION', category: 'LEGION', role: 'VIBRANIUM BLADE', cost: 1450,
+      desc: 'Crimson-and-silver energy-retention armor with slicing arc blades.',
+      primary: '#dc2626', secondary: '#e2e8f0', glow: '#38bdf8', eye: '#ffffff',
+      speedMult: 1.2, dmgMult: 1.62, fireRateMult: 1.3, hpBonus: 75, repulsorColor: '#38bdf8', unibeamColor: '#bae6fd', special: 'centurion' },
+    { id: 'mk35', name: 'MARK XXXV — RED SNAPPER', category: 'LEGION', role: 'DISASTER RESCUE CLAW', cost: 1500,
+      desc: 'Extended hydraulic claw arms unleashing wide-spread plasma pincers.',
+      primary: '#b91c1c', secondary: '#f59e0b', glow: '#fb923c', eye: '#fef08a',
+      speedMult: 1.05, dmgMult: 1.68, fireRateMult: 1.15, hpBonus: 105, repulsorColor: '#fb923c', unibeamColor: '#f97316', special: 'snapper' },
+    { id: 'mk38', name: 'MARK XXXVIII — IGOR', category: 'LEGION', role: 'HEAVY LIFTER BRUTE', cost: 1550,
+      desc: 'Hunchbacked cobalt heavy-lifting frame with massive hull durability.',
+      primary: '#1e40af', secondary: '#94a3b8', glow: '#38bdf8', eye: '#bae6fd',
+      speedMult: 0.92, dmgMult: 1.75, fireRateMult: 1.0, hpBonus: 170, repulsorColor: '#60a5fa', unibeamColor: '#38bdf8', special: 'igor' },
+    { id: 'mk39', name: 'MARK XXXIX — STARBOOST', category: 'LEGION', role: 'SUB-ORBITAL GEMINI', cost: 1650,
+      desc: 'White-and-gold deep-space armor with hyper-thrusters & cosmic bolts.',
+      primary: '#f8fafc', secondary: '#eab308', glow: '#38bdf8', eye: '#38bdf8',
+      speedMult: 1.36, dmgMult: 1.58, fireRateMult: 1.32, hpBonus: 70, repulsorColor: '#38bdf8', unibeamColor: '#e0f2fe', special: 'starboost' },
+    { id: 'mk40', name: 'MARK XL — SHOTGUN', category: 'LEGION', role: 'MACH-7 HYPERVELOCITY', cost: 1700,
+      desc: 'Gunmetal Mach-7 speedster firing a 5-pellet scattergun repulsor blast.',
+      primary: '#475569', secondary: '#cbd5e1', glow: '#38bdf8', eye: '#bae6fd',
+      speedMult: 1.42, dmgMult: 1.45, fireRateMult: 1.25, hpBonus: 60, repulsorColor: '#38bdf8', unibeamColor: '#7dd3fc', special: 'shotgun' },
+    { id: 'mk41', name: 'MARK XLI — BONES', category: 'LEGION', role: 'SKELETON MODULAR', cost: 1750,
+      desc: 'Black-and-gold exposed skeleton frame with autonomous multi-vector bolts.',
+      primary: '#0f172a', secondary: '#eab308', glow: '#facc15', eye: '#fef08a',
+      speedMult: 1.38, dmgMult: 1.6, fireRateMult: 1.48, hpBonus: 55, repulsorColor: '#facc15', unibeamColor: '#fde047', special: 'bones' },
+
+    // MULTIVERSE & LEGACY VARIANTS
+    { id: 'warmachine', name: 'WAR MACHINE (JIM RHODES)', category: 'MULTIVERSE', role: 'HEAVY BALLISTIC ARSENAL', cost: 1900,
+      desc: 'Shoulder-mounted rotary minigun + high-explosive micro-missile pods.',
+      primary: '#334155', secondary: '#cbd5e1', glow: '#f97316', eye: '#ef4444',
+      speedMult: 1.08, dmgMult: 1.78, fireRateMult: 1.65, hpBonus: 120, repulsorColor: '#fb923c', unibeamColor: '#ef4444', special: 'warmachine' },
+    { id: 'ironheart', name: 'IRONHEART (RIRI WILLIAMS)', category: 'MULTIVERSE', role: 'HYPER-LOCK GENIUS', cost: 1950,
+      desc: 'Magenta-and-gold next-gen armor with rapid multi-target missile locks.',
+      primary: '#db2777', secondary: '#fbbf24', glow: '#f472b6', eye: '#fce7f3',
+      speedMult: 1.28, dmgMult: 1.72, fireRateMult: 1.45, hpBonus: 85, repulsorColor: '#f472b6', unibeamColor: '#ec4899', special: 'ironheart' },
+    { id: 'im2099', name: 'IRON MAN 2099 (ARNO STARK)', category: 'MULTIVERSE', role: 'NUEVA YORK CYBER-TECH', cost: 2050,
+      desc: '2099 cyber-crimson armor firing phase-piercing neon laser lances.',
+      primary: '#be123c', secondary: '#38bdf8', glow: '#22d3ee', eye: '#a5f3fc',
+      speedMult: 1.36, dmgMult: 1.82, fireRateMult: 1.5, hpBonus: 90, repulsorColor: '#22d3ee', unibeamColor: '#38bdf8', special: 'im2099' },
+    { id: 'superior', name: 'SUPERIOR IRON MAN (ENDO-SYM)', category: 'MULTIVERSE', role: 'LIQUID SYMBIOTE ARMOR', cost: 2150,
+      desc: 'Living liquid-chrome Endo-Sym armor that siphons hull HP on every kill.',
+      primary: '#f1f5f9', secondary: '#cbd5e1', glow: '#f97316', eye: '#fb923c',
+      speedMult: 1.34, dmgMult: 1.95, fireRateMult: 1.48, hpBonus: 105, repulsorColor: '#fb923c', unibeamColor: '#f97316', special: 'superior' },
+    { id: 'ultimate', name: 'ULTIMATE IRON MAN (EARTH-1610)', category: 'MULTIVERSE', role: 'NEURAL OVERDRIVE', cost: 2200,
+      desc: 'Full-body neural-link armor with hyper-accelerated plasma bolts.',
+      primary: '#dc2626', secondary: '#94a3b8', glow: '#38bdf8', eye: '#bae6fd',
+      speedMult: 1.32, dmgMult: 1.9, fireRateMult: 1.55, hpBonus: 115, repulsorColor: '#38bdf8', unibeamColor: '#60a5fa', special: 'ultimate' },
+    { id: 'ironmaniac', name: 'IRON MANIAC (EARTH-5012)', category: 'MULTIVERSE', role: 'BRUTAL HEAVY PLASMA', cost: 2250,
+      desc: 'Ruthless alternate Stark clad in gunmetal-crimson siege plating.',
+      primary: '#7f1d1d', secondary: '#475569', glow: '#ef4444', eye: '#fecaca',
+      speedMult: 1.15, dmgMult: 2.15, fireRateMult: 1.3, hpBonus: 135, repulsorColor: '#ef4444', unibeamColor: '#dc2626', special: 'ironmaniac' },
+    { id: 'lordiron', name: 'LORD IRON (EARTH-311 / 1602)', category: 'MULTIVERSE', role: 'ELIZABETHAN ALCHEMY', cost: 2300,
+      desc: '1602 brass-and-crimson royal plate channeling lightning-charged steam arcs.',
+      primary: '#991b1b', secondary: '#d97706', glow: '#fde047', eye: '#fef9c3',
+      speedMult: 1.18, dmgMult: 2.05, fireRateMult: 1.35, hpBonus: 125, repulsorColor: '#fde047', unibeamColor: '#facc15', special: 'lordiron' },
+    { id: 'infamous', name: 'INFAMOUS IRON MAN (VON DOOM)', category: 'MULTIVERSE', role: 'TECH-SORCERY HYBRID', cost: 2450,
+      desc: 'Victor Von Doom wearing Stark nanotech fused with Latverian mystic bolts.',
+      primary: '#cbd5e1', secondary: '#047857', glow: '#10b981', eye: '#6ee7b7',
+      speedMult: 1.3, dmgMult: 2.25, fireRateMult: 1.45, hpBonus: 140, repulsorColor: '#10b981', unibeamColor: '#34d399', special: 'infamous' },
+    { id: 'ironlad', name: 'IRON LAD (40TH CENTURY)', category: 'MULTIVERSE', role: 'NEUROKINETIC ARMOR', cost: 2500,
+      desc: '40th-century chronal armor firing auto-homing neurokinetic bolts.',
+      primary: '#b91c1c', secondary: '#fbbf24', glow: '#38bdf8', eye: '#e0f2fe',
+      speedMult: 1.38, dmgMult: 2.1, fireRateMult: 1.55, hpBonus: 120, repulsorColor: '#38bdf8', unibeamColor: '#818cf8', special: 'ironlad' },
+    { id: 'sorcerer', name: 'SORCERER SUPREME TONY STARK', category: 'MULTIVERSE', role: 'MYSTIC ARC REACTOR', cost: 2650,
+      desc: 'Eldritch mandalas & astral chain-lightning powered by the Eye of Agamotto.',
+      primary: '#991b1b', secondary: '#eab308', glow: '#f59e0b', eye: '#fef08a',
+      speedMult: 1.35, dmgMult: 2.4, fireRateMult: 1.5, hpBonus: 135, repulsorColor: '#f59e0b', unibeamColor: '#fbbf24', special: 'sorcerer' },
+    { id: 'zombie', name: 'ZOMBIE IRON MAN (EARTH-2149)', category: 'MULTIVERSE', role: 'COSMIC HUNGER SIPHON', cost: 2750,
+      desc: 'Galactus-empowered undead Stark draining +50% credits & life force.',
+      primary: '#7f1d1d', secondary: '#6b7280', glow: '#a855f7', eye: '#f3e8ff',
+      speedMult: 1.28, dmgMult: 2.45, fireRateMult: 1.45, hpBonus: 150, repulsorColor: '#a855f7', unibeamColor: '#c084fc', special: 'zombie' },
+    { id: 'ironhammer', name: 'IRON HAMMER (STARK ODINSON)', category: 'MULTIVERSE', role: 'URU MJOLNIR FORGE', cost: 2900,
+      desc: 'Warp World fusion of Iron Man & Thor unleashing Bifrost chain lightning.',
+      primary: '#b91c1c', secondary: '#fbbf24', glow: '#38bdf8', eye: '#ffffff',
+      speedMult: 1.4, dmgMult: 2.65, fireRateMult: 1.55, hpBonus: 175, repulsorColor: '#38bdf8', unibeamColor: '#7dd3fc', special: 'ironhammer' },
+
+    // PRESTIGE 35TH SUIT: GOD EMPEROR DR. DOOM
+    { id: 'doom', name: 'DR. DOOM — GOD EMPEROR', category: 'PRESTIGE', role: 'OMNIPOTENT • WAVE WARP', cost: 0,
+      desc: '1,000,000+ HP • 1,000,000x Cosmic Power, 9-Bolt Homing Chain Fan & Reality Wave Warp [N/M/G].',
+      primary: '#065f46', secondary: '#cbd5e1', glow: '#34d399', eye: '#a7f3d0',
+      speedMult: 1.75, dmgMult: 1000000, fireRateMult: 2.6, hpBonus: 999900, repulsorColor: '#34d399', unibeamColor: '#a7f3d0',
+      special: 'doom', secret: true }
+  ];
+
+  const BASE_SUIT_IDS = SUITS.filter(s => s.id !== 'doom').map(s => s.id);
+
+  const UPGRADES = [
+    { id: 'repulsor', name: 'REPULSOR AMPLIFIER', desc: '+22% Primary Weapon Damage per rank', baseCost: 220, max: 6 },
+    { id: 'reactor', name: 'ARC REACTOR CORE', desc: '+18% Fire Rate & Unibeam Charge', baseCost: 240, max: 6 },
+    { id: 'hull', name: 'GOLD-TITANIUM PLATING', desc: '+35 Max Hull Integrity per rank', baseCost: 200, max: 6 },
+    { id: 'thrusters', name: 'FLIGHT STABILIZERS', desc: '+10% Thrust Speed & Dash Recharge', baseCost: 210, max: 6 },
+    { id: 'missiles', name: 'MICRO-MISSILE PODS', desc: '+2 Max Target Locks & +25% Salvo DMG', baseCost: 260, max: 6 },
+    { id: 'jarvis', name: 'J.A.R.V.I.S. TACTICAL AI', desc: '+15% Credit Drops & EMP Radius', baseCost: 250, max: 6 }
+  ];
+
+  const CONSUMABLES = [
+    { id: 'repair', name: 'NANITE HULL REPAIR', desc: 'Restore 100% Hull Integrity immediately', cost: 150 },
+    { id: 'overcharge', name: 'ARC OVERCHARGE CELL', desc: 'Fill Chest Unibeam Energy to 100%', cost: 180 },
+    { id: 'shield', name: 'AEGIS HEX-SHIELD', desc: '15s Invulnerable Energy Barrier', cost: 240 },
+    { id: 'orbital', name: 'HOUSE PARTY SALVO', desc: 'Launch 18 homing missiles at all foes', cost: 280 }
+  ];
+
+  /* =========================================================================
+     3. PERSISTENT & RUNTIME GAME STATE
+     ========================================================================= */
+  const STORAGE_KEY = 'ironman_sky_guardian_omega_v1';
+
+  const defaultSave = () => ({
+    credits: 350,
+    equippedSuit: 'mk7',
+    unlockedSuits: ['mk7'],
+    wave50Cleared: {},
+    upgrades: { repulsor: 0, reactor: 0, hull: 0, thrusters: 0, missiles: 0, jarvis: 0 },
+    autoShootUnlocked: false,
+    usedCodes: []
+  });
+
+  let save = defaultSave();
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      save = { ...defaultSave(), ...parsed, upgrades: { ...defaultSave().upgrades, ...(parsed.upgrades || {}) } };
+    }
+  } catch (e) { /* ignore storage restrictions */ }
+
+  function persistSave() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(save)); } catch (e) { /* ignore */ }
+  }
+
+  function getSuit(id) {
+    return SUITS.find(s => s.id === id) || SUITS[0];
+  }
+
+  function hasMasteredAllBaseSuits() {
+    return BASE_SUIT_IDS.every(id => !!save.wave50Cleared[id]);
+  }
+
+  function unlockDoomIfEligible() {
+    if (!save.unlockedSuits.includes('doom') && hasMasteredAllBaseSuits()) {
+      save.unlockedSuits.push('doom');
+      persistSave();
+      showBannerToast('👑 ALL 34 SUITS MASTERED W50! GOD EMPEROR DR. DOOM UNLOCKED!', '#34d399');
+    }
+  }
+
+  const state = {
+    screen: 'loader', // 'loader' | 'start' | 'playing' | 'armory' | 'codes' | 'gameover'
+    paused: false,
+    mobileOverride: 'auto', // 'auto' | 'on' | 'off'
+    selectedCategory: 'ALL',
+    previewSuitId: save.equippedSuit,
+
+    wave: 1,
+    score: 0,
+    kills: 0,
+    waveTimer: 0,
+    waveToSpawn: 0,
+    spawnTimer: 0,
+    bossActive: false,
+
+    autoShoot: false,
+    autoMode: 'SMART', // 'SMART' | 'BOSS-WEAKPT' | 'NEAREST'
+
+    weather: 'clear', // 'clear' | 'sunset' | 'night' | 'storm'
+    weatherTimer: 0,
+    lightningFlash: 0,
+    screenShake: 0,
+    toastText: '',
+    toastColor: '#38bdf8',
+    toastTimer: 0
+  };
+
+  const player = {
+    x: 180, y: 300, vx: 0, vy: 0,
+    hp: 100, maxHp: 100,
+    unibeam: 0, unibeamActive: 0,
+    fireCd: 0,
+    dashCd: 0, dashActive: 0,
+    empCd: 0,
+    shieldTimer: 0,
+    aimX: 600, aimY: 300,
+    thrusterPhase: 0,
+    _leadPoint: null,
+    _predictedTarget: null
+  };
+
+  const keys = {};
+  const joyVec = { x: 0, y: 0 };
+  let mouseDown = false;
+  let mobileFireHeld = false;
+
+  let bullets = [];
+  let enemyBullets = [];
+  let missiles = [];
+  let enemies = [];
+  let particles = [];
+  let lightnings = [];
+  let lockedTargets = [];
+  let skyBuildings = [];
+
+  /* =========================================================================
+     4. DOM REFERENCES
+     ========================================================================= */
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const comicCanvas = document.getElementById('comicCanvas');
+  const comicCtx = comicCanvas.getContext('2d');
+  const previewCanvas = document.getElementById('previewCanvas');
+  const previewCtx = previewCanvas.getContext('2d');
+
+  const elLoader = document.getElementById('marvel-loader');
+  const elStart = document.getElementById('startOverlay');
+  const elHud = document.getElementById('gameHud');
+  const elDock = document.getElementById('desktopCooldownDock');
+  const elMobileUi = document.getElementById('mobile-ui');
+  const elArmory = document.getElementById('armoryModal');
+  const elCodes = document.getElementById('codesModal');
+  const elEnd = document.getElementById('endModal');
+
+  /* =========================================================================
+     5. RESPONSIVE CANVAS & LIVING 6-LAYER SKYLINE
+     ========================================================================= */
+  let W = window.innerWidth;
+  let H = window.innerHeight;
+
+  function generateSkyline() {
+    skyBuildings = [];
+    for (let layer = 0; layer < 3; layer++) {
+      const list = [];
+      let x = -40;
+      const count = Math.ceil(W / (70 - layer * 12)) + 6;
+      for (let i = 0; i < count; i++) {
+        const w = (48 + Math.random() * 58) * (1 - layer * 0.12);
+        const h = (110 + Math.random() * 210) * (0.65 + layer * 0.22);
+        const hasSpire = Math.random() < 0.25;
+        const isStark = (layer === 1 && i === Math.floor(count * 0.65));
+        list.push({ x, w, h, hasSpire, isStark, winSeed: Math.random() * 100 });
+        x += w + (6 + Math.random() * 14);
+      }
+      skyBuildings.push(list);
+    }
+  }
+
+  function resizeCanvas() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(W * dpr);
+    canvas.height = Math.floor(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    generateSkyline();
+    updateMobileVisibility();
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  function isTouchDevice() {
+    return ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || W < 820;
+  }
+
+  function updateMobileVisibility() {
+    const showMob = state.mobileOverride === 'on' || (state.mobileOverride === 'auto' && isTouchDevice());
+    const inActiveFlight = (state.screen === 'playing');
+    elMobileUi.classList.toggle('is-hidden', !(showMob && inActiveFlight));
+    elDock.classList.toggle('is-hidden', !(!showMob && inActiveFlight));
+    const label = `📱 MOBILE UI: ${state.mobileOverride.toUpperCase()}`;
+    document.getElementById('startMobileToggleBtn').textContent = label;
+    document.getElementById('hudMobileBtn').textContent = showMob ? '📱 TOUCH: ON' : '🖥️ DESKTOP';
+  }
+
+  /* =========================================================================
+     6. 8-PANEL MARVEL COMIC FLIPBOOK LOADER
+     ========================================================================= */
+  const COMIC_PANELS = [
+    { bg: '#991b1b', accent: '#fbbf24', sfx: 'CLANG!', cap: 'ISSUE #01 • MARK I ESCAPES THE CAVE', suit: 'mk1' },
+    { bg: '#1e3a8a', accent: '#38bdf8', sfx: 'WHOOSH!', cap: 'ISSUE #02 • MACH-3 TEST FLIGHT', suit: 'mk2' },
+    { bg: '#7f1d1d', accent: '#f59e0b', sfx: 'ZAP-KRAK!', cap: 'ISSUE #03 • GOLD-TITANIUM ALLOY ONLINE', suit: 'mk3' },
+    { bg: '#0f172a', accent: '#22d3ee', sfx: 'HUMMMMM!', cap: 'ISSUE #04 • NEW ELEMENT ARC CORE', suit: 'mk6' },
+    { bg: '#7c2d12', accent: '#fbbf24', sfx: 'BOOM!!', cap: 'ISSUE #05 • BATTLE OF NEW YORK POD', suit: 'mk7' },
+    { bg: '#4c1d95', accent: '#c084fc', sfx: 'SHING!!', cap: 'ISSUE #06 • NANOTECH BLEEDING EDGE', suit: 'mk50' },
+    { bg: '#064e3b', accent: '#34d399', sfx: 'DOOM!!', cap: 'ISSUE #07 • LATVERIAN COSMIC THREAT', suit: 'doom' },
+    { bg: '#991b1b', accent: '#fef08a', sfx: 'ASSEMBLE!', cap: 'ISSUE #08 • SKY GUARDIAN PROTOCOL READY', suit: 'mk85' }
+  ];
+
+  let loaderProgress = 0;
+  let loaderInterval = null;
+
+  function renderComicPanel(idx) {
+    const p = COMIC_PANELS[idx % COMIC_PANELS.length];
+    const cw = comicCanvas.width = 480;
+    const ch = comicCanvas.height = 300;
+    comicCtx.fillStyle = p.bg;
+    comicCtx.fillRect(0, 0, cw, ch);
+
+    // Speed rays
+    comicCtx.save();
+    comicCtx.translate(cw * 0.5, ch * 0.5);
+    for (let i = 0; i < 24; i++) {
+      comicCtx.rotate((Math.PI * 2) / 24);
+      comicCtx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.18)';
+      comicCtx.beginPath();
+      comicCtx.moveTo(0, 0);
+      comicCtx.lineTo(320, -14);
+      comicCtx.lineTo(320, 14);
+      comicCtx.closePath();
+      comicCtx.fill();
+    }
+    comicCtx.restore();
+
+    // Draw Suit Silhouette inside comic panel
+    drawStickmanSuit(comicCtx, cw * 0.5, ch * 0.46, 1.55, getSuit(p.suit), performance.now() * 0.004, 0.25);
+
+    // Comic SFX bubble
+    comicCtx.save();
+    comicCtx.translate(cw * 0.76, ch * 0.28);
+    comicCtx.rotate(-0.14);
+    comicCtx.fillStyle = p.accent;
+    comicCtx.strokeStyle = '#090d16';
+    comicCtx.lineWidth = 4;
+    comicCtx.beginPath();
+    comicCtx.roundRect(-64, -22, 128, 44, 10);
+    comicCtx.fill();
+    comicCtx.stroke();
+    comicCtx.fillStyle = '#090d16';
+    comicCtx.font = '900 20px Orbitron, sans-serif';
+    comicCtx.textAlign = 'center';
+    comicCtx.textBaseline = 'middle';
+    comicCtx.fillText(p.sfx, 0, 1);
+    comicCtx.restore();
+
+    document.getElementById('comicCaption').textContent = p.cap;
+  }
+
+  function finishLoader() {
+    if (loaderInterval) { clearInterval(loaderInterval); loaderInterval = null; }
+    elLoader.classList.add('is-hidden');
+    elStart.classList.remove('is-hidden');
+    state.screen = 'start';
+    updateMobileVisibility();
+  }
+
+  function startLoader() {
+    let step = 0;
+    renderComicPanel(0);
+    loaderInterval = setInterval(() => {
+      step++;
+      loaderProgress = Math.min(100, step * 12.5);
+      document.getElementById('loaderBar').style.width = loaderProgress + '%';
+      document.getElementById('loaderStatus').textContent =
+        loaderProgress < 100 ? `LOADING ARMORY DATABASE... ${Math.round(loaderProgress)}%` : 'SYSTEMS ONLINE!';
+      renderComicPanel(step);
+      SoundEngine.play('comic');
+      if (step >= 8) {
+        setTimeout(finishLoader, 260);
+      }
+    }, 260);
+  }
+  document.getElementById('skipIntroBtn').addEventListener('click', finishLoader);
+
+  /* =========================================================================
+     7. BESPOKE NANO-WEAVE EXO-STICKMAN RENDERER (ALL 35 SUITS)
+     ========================================================================= */
+  function drawStickmanSuit(c, x, y, scale, suit, time, tiltAngle = 0) {
+    c.save();
+    c.translate(x, y);
+    c.rotate(tiltAngle);
+    c.scale(scale, scale);
+
+    const pulse = 0.85 + Math.sin(time * 8) * 0.15;
+
+    // 1. Capes / Auras behind hero
+    if (suit.special === 'doom' || suit.special === 'infamous') {
+      // Emerald Latverian Royal Cloak
+      c.fillStyle = suit.special === 'doom' ? '#064e3b' : '#065f46';
+      c.beginPath();
+      c.moveTo(-10, -14);
+      c.lineTo(-34 - Math.sin(time * 6) * 5, 34);
+      c.lineTo(6, 30);
+      c.closePath();
+      c.fill();
+    } else if (suit.special === 'lordiron') {
+      c.fillStyle = '#7f1d1d';
+      c.beginPath();
+      c.moveTo(-8, -14);
+      c.lineTo(-30 - Math.sin(time * 5) * 4, 30);
+      c.lineTo(4, 26);
+      c.closePath();
+      c.fill();
+    } else if (suit.special === 'ironhammer') {
+      c.fillStyle = '#b91c1c';
+      c.beginPath();
+      c.moveTo(-8, -14);
+      c.lineTo(-32 - Math.sin(time * 7) * 5, 32);
+      c.lineTo(5, 28);
+      c.closePath();
+      c.fill();
+    }
+
+    // Cosmic / Symbiote / Mystic Aura
+    if (suit.special === 'doom' || suit.special === 'superior' || suit.special === 'zombie' || suit.special === 'sorcerer') {
+      c.save();
+      c.strokeStyle = suit.glow;
+      c.globalAlpha = 0.45 * pulse;
+      c.lineWidth = 2;
+      c.beginPath();
+      c.arc(0, 0, 32 + Math.sin(time * 5) * 3, 0, Math.PI * 2);
+      c.stroke();
+      if (suit.special === 'doom' || suit.special === 'sorcerer') {
+        // Rotating Arcane Mandala / Runes
+        c.rotate(time * 1.4);
+        c.strokeRect(-22, -22, 44, 44);
+      }
+      c.restore();
+    }
+
+    // 2. Boot Jet Thruster Flames
+    const flameLen = (18 + Math.sin(time * 24) * 6) * pulse;
+    const gradBoot = c.createLinearGradient(-12, 22, -12 - flameLen, 34 + flameLen * 0.5);
+    gradBoot.addColorStop(0, '#ffffff');
+    gradBoot.addColorStop(0.4, suit.glow);
+    gradBoot.addColorStop(1, 'transparent');
+    c.fillStyle = gradBoot;
+    c.beginPath();
+    c.moveTo(-10, 20);
+    c.lineTo(-16 - flameLen, 32 + flameLen * 0.4);
+    c.lineTo(-4, 24);
+    c.closePath();
+    c.fill();
+
+    // 3. Articulated Exo-Stickman Limbs & Torso
+    c.lineCap = 'round';
+    c.lineJoin = 'round';
+
+    // Back Leg & Front Leg
+    c.strokeStyle = suit.primary;
+    c.lineWidth = suit.special === 'hulkbuster' || suit.special === 'igor' ? 7 : 5;
+    c.beginPath();
+    c.moveTo(-2, 10); c.lineTo(-12, 24);
+    c.moveTo(2, 10); c.lineTo(10, 25);
+    c.stroke();
+
+    // Gold/Secondary Shin Armor
+    c.strokeStyle = suit.secondary;
+    c.lineWidth = 3;
+    c.beginPath();
+    c.moveTo(-7, 17); c.lineTo(-12, 24);
+    c.moveTo(6, 17); c.lineTo(10, 25);
+    c.stroke();
+
+    // Torso Armor Core
+    c.strokeStyle = suit.primary;
+    c.lineWidth = suit.special === 'hulkbuster' || suit.special === 'igor' ? 11 : 7.5;
+    c.beginPath();
+    c.moveTo(0, -13);
+    c.lineTo(0, 10);
+    c.stroke();
+
+    // Exposed Gold Ribs for Mark XLI Bones
+    if (suit.special === 'bones') {
+      c.strokeStyle = '#eab308';
+      c.lineWidth = 2;
+      for (let ry = -8; ry <= 4; ry += 4) {
+        c.beginPath(); c.moveTo(-5, ry); c.lineTo(5, ry); c.stroke();
+      }
+    }
+
+    // Chest Arc Reactor Core
+    c.fillStyle = suit.glow;
+    c.shadowColor = suit.glow;
+    c.shadowBlur = 10;
+    if (suit.special === 'triangle') {
+      c.beginPath();
+      c.moveTo(2, -7); c.lineTo(6, -1); c.lineTo(-2, -1);
+      c.closePath(); c.fill();
+    } else {
+      c.beginPath();
+      c.arc(2, -4, suit.special === 'heartbreaker' ? 4.5 : 3.2, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.shadowBlur = 0;
+
+    // 4. Helmet & Visor
+    c.fillStyle = suit.primary;
+    c.beginPath();
+    c.arc(2, -21, suit.special === 'hulkbuster' ? 8.5 : 7, 0, Math.PI * 2);
+    c.fill();
+
+    // Faceplate
+    c.fillStyle = suit.secondary;
+    c.beginPath();
+    c.arc(4, -21, 5, -0.8, 0.9);
+    c.fill();
+
+    // Glowing Eye Slit
+    c.fillStyle = suit.eye;
+    c.fillRect(4, -22.5, 4.5, 2);
+
+    // Dr. Doom Golden Cosmic Crown
+    if (suit.special === 'doom') {
+      c.fillStyle = '#fbbf24';
+      c.beginPath();
+      c.moveTo(-4, -27); c.lineTo(-2, -33); c.lineTo(2, -28); c.lineTo(6, -34); c.lineTo(8, -27);
+      c.closePath();
+      c.fill();
+    }
+
+    // 5. Aiming Arm & Repulsor Palm
+    c.strokeStyle = suit.primary;
+    c.lineWidth = suit.special === 'striker' ? 6.5 : 4.5;
+    c.beginPath();
+    c.moveTo(1, -10);
+    c.lineTo(18, -8);
+    c.stroke();
+
+    // Striker Jackhammer Gauntlet / Iron Hammer Mjolnir
+    if (suit.special === 'striker') {
+      c.fillStyle = '#eab308';
+      c.fillRect(14, -12, 9, 8);
+    } else if (suit.special === 'ironhammer') {
+      c.fillStyle = '#94a3b8';
+      c.fillRect(16, -15, 7, 12);
+    }
+
+    // Palm Repulsor Glow
+    c.fillStyle = suit.repulsorColor;
+    c.shadowColor = suit.repulsorColor;
+    c.shadowBlur = 12;
+    c.beginPath();
+    c.arc(20, -8, 3.5 * pulse, 0, Math.PI * 2);
+    c.fill();
+    c.shadowBlur = 0;
+
+    // 6. Special Suit Attachments (War Machine Shoulder Gatling / Rescue Dorsal Pods)
+    if (suit.special === 'warmachine') {
+      c.fillStyle = '#94a3b8';
+      c.fillRect(-8, -19, 14, 4);
+      c.fillStyle = '#f97316';
+      c.fillRect(6, -18.5, 4, 3);
+    } else if (suit.special === 'rescue') {
+      c.fillStyle = '#60a5fa';
+      c.beginPath();
+      c.arc(-12, -16, 3, 0, Math.PI * 2);
+      c.arc(-14, -6, 3, 0, Math.PI * 2);
+      c.fill();
+    }
+
+    c.restore();
+  }
+
+  /* =========================================================================
+     8. BACKGROUND PARALLAX & WEATHER ENGINE (6 LAYERS)
+     ========================================================================= */
+  function drawBackground(dt, time) {
+    state.weatherTimer += dt;
+    if (state.weatherTimer > 28) {
+      state.weatherTimer = 0;
+      const modes = ['clear', 'sunset', 'night', 'storm'];
+      state.weather = modes[(modes.indexOf(state.weather) + 1) % modes.length];
+    }
+
+    // Layer 1: Atmospheric Sky Gradient
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    if (state.weather === 'sunset') {
+      grad.addColorStop(0, '#1e1b4b');
+      grad.addColorStop(0.5, '#9a3412');
+      grad.addColorStop(1, '#f59e0b');
+    } else if (state.weather === 'night') {
+      grad.addColorStop(0, '#020617');
+      grad.addColorStop(0.6, '#0f172a');
+      grad.addColorStop(1, '#1e293b');
+    } else if (state.weather === 'storm') {
+      grad.addColorStop(0, '#090d16');
+      grad.addColorStop(0.6, '#1e293b');
+      grad.addColorStop(1, '#334155');
+    } else {
+      grad.addColorStop(0, '#030712');
+      grad.addColorStop(0.45, '#0c4a6e');
+      grad.addColorStop(1, '#0284c7');
+    }
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Layer 2: Volumetric Sun / Moon & Aurora Glow
+    const orbX = W * 0.78;
+    const orbY = H * 0.22;
+    const orbGrad = ctx.createRadialGradient(orbX, orbY, 8, orbX, orbY, 140);
+    orbGrad.addColorStop(0, state.weather === 'night' ? 'rgba(226,232,240,0.85)' : 'rgba(254,240,138,0.85)');
+    orbGrad.addColorStop(0.4, state.weather === 'sunset' ? 'rgba(249,115,22,0.3)' : 'rgba(56,189,248,0.2)');
+    orbGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = orbGrad;
+    ctx.beginPath();
+    ctx.arc(orbX, orbY, 140, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Storm Lightning Flash
+    if (state.weather === 'storm' && Math.random() < 0.008) {
+      state.lightningFlash = 0.35;
+    }
+    if (state.lightningFlash > 0) {
+      ctx.fillStyle = `rgba(224, 242, 254, ${state.lightningFlash})`;
+      ctx.fillRect(0, 0, W, H);
+      state.lightningFlash = Math.max(0, state.lightningFlash - dt * 1.8);
+    }
+
+    // Layer 3: Drifting Rim-Lit Clouds
+    ctx.fillStyle = state.weather === 'storm' ? 'rgba(15, 23, 42, 0.42)' : 'rgba(224, 242, 254, 0.08)';
+    for (let c = 0; c < 6; c++) {
+      const cx = ((W + 240) - ((time * (18 + c * 4) + c * 260) % (W + 320)));
+      const cy = H * (0.14 + (c % 3) * 0.11);
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 90 + (c % 2) * 35, 22, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Layers 4, 5, 6: 3 Parallax City Layers + Stark Tower + Suspension Bridge
+    const layerColors = ['#071124', '#0b1933', '#102347'];
+    const speeds = [14, 28, 48];
+    for (let l = 0; l < skyBuildings.length; l++) {
+      const list = skyBuildings[l];
+      ctx.fillStyle = layerColors[l];
+      for (let i = 0; i < list.length; i++) {
+        const b = list[i];
+        b.x -= speeds[l] * dt;
+        if (b.x + b.w < -40) {
+          b.x = W + 20;
+        }
+        const by = H - b.h;
+        ctx.fillRect(b.x, by, b.w, b.h);
+
+        if (b.isStark) {
+          // Stark Tower Arc Spire
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(b.x + b.w * 0.45, by - 55, 4, 55);
+          ctx.beginPath();
+          ctx.arc(b.x + b.w * 0.47, by - 18, 12, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = layerColors[l];
+        } else if (b.hasSpire) {
+          ctx.fillRect(b.x + b.w * 0.48, by - 24, 3, 24);
+        }
+
+        // Lit Windows on Front Layer
+        if (l === 2) {
+          ctx.fillStyle = 'rgba(254, 240, 138, 0.22)';
+          for (let wy = by + 14; wy < H - 16; wy += 18) {
+            for (let wx = b.x + 8; wx < b.x + b.w - 10; wx += 14) {
+              if (Math.sin(wx * 0.3 + wy * 0.7 + b.winSeed) > 0.25) {
+                ctx.fillRect(wx, wy, 5, 8);
+              }
+            }
+          }
+          ctx.fillStyle = layerColors[l];
+        }
+      }
+
+      // Suspension Bridge Silhouette between Mid and Foreground Skyline
+      if (l === 1) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(15, 23, 42, 0.72)';
+        ctx.lineWidth = 3;
+        const deckY = H - 34;
+        ctx.beginPath();
+        ctx.moveTo(0, deckY);
+        ctx.lineTo(W, deckY);
+        ctx.stroke();
+        const span = 280;
+        const offset = (time * 22) % span;
+        for (let bx = -offset; bx < W + span; bx += span) {
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+          ctx.fillRect(bx - 4, deckY - 62, 8, 66);
+          ctx.beginPath();
+          ctx.moveTo(bx, deckY - 58);
+          ctx.quadraticCurveTo(bx + span * 0.5, deckY - 12, bx + span, deckY - 58);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+  }
+
+  /* =========================================================================
+     9. COMBAT HELPERS, TARGETING & J.A.R.V.I.S. PREDICTIVE AUTO-SHOOT
+     ========================================================================= */
+  function showBannerToast(text, color = '#38bdf8') {
+    state.toastText = text;
+    state.toastColor = color;
+    state.toastTimer = 3.2;
+  }
+
+  function spawnParticles(x, y, color, count = 10, speed = 220) {
+    for (let i = 0; i < count; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const spd = (0.25 + Math.random() * 0.75) * speed;
+      particles.push({
+        x, y,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd,
+        life: 0.25 + Math.random() * 0.35,
+        maxLife: 0.6,
+        size: 2 + Math.random() * 3.5,
+        color
+      });
+    }
+  }
+
+  function getPlayerStats() {
+    const suit = getSuit(save.equippedSuit);
+    const u = save.upgrades;
+    const maxHp = Math.round((100 + suit.hpBonus + u.hull * 35));
+    const dmg = 14 * suit.dmgMult * (1 + u.repulsor * 0.22);
+    const fireRate = 6.2 * suit.fireRateMult * (1 + u.reactor * 0.18);
+    const speed = 340 * suit.speedMult * (1 + u.thrusters * 0.10);
+    const maxLocks = suit.id === 'doom' ? 16 : (4 + u.missiles * 2 + (suit.special === 'ironheart' ? 2 : 0));
+    const cdr = suit.id === 'doom' ? 0.85 : Math.min(0.6, u.thrusters * 0.08 + u.jarvis * 0.05);
+    return { suit, maxHp, dmg, fireRate, speed, maxLocks, cdr };
+  }
+
+  function predictAimPoint(target, projSpeed = 920) {
+    const dx = target.x - player.x;
+    const dy = target.y - player.y;
+    const dist = Math.hypot(dx, dy);
+    const t = dist / projSpeed;
+    return {
+      x: target.x + (target.vx || 0) * t,
+      y: target.y + (target.vy || 0) * t
+    };
+  }
+
+  function selectPredictiveTarget() {
+    if (enemies.length === 0) return null;
+    if (state.autoMode === 'BOSS-WEAKPT') {
+      const boss = enemies.find(e => e.isBoss);
+      if (boss) return boss;
+    }
+    if (state.autoMode === 'NEAREST') {
+      let best = null, bestD = Infinity;
+      for (const e of enemies) {
+        const d = Math.hypot(e.x - player.x, e.y - player.y);
+        if (d < bestD) { bestD = d; best = e; }
+      }
+      return best;
+    }
+    // SMART: prioritize boss, then lowest HP / closest threat
+    let best = null, bestScore = -Infinity;
+    for (const e of enemies) {
+      const d = Math.hypot(e.x - player.x, e.y - player.y);
+      const score = (e.isBoss ? 1200 : 0) + (1000 - d) + (e.maxHp - e.hp) * 0.5;
+      if (score > bestScore) { bestScore = score; best = e; }
+    }
+    return best;
+  }
+
+  function firePrimaryWeapon(aimX, aimY) {
+    const stats = getPlayerStats();
+    const suit = stats.suit;
+    const baseAng = Math.atan2(aimY - (player.y - 8), aimX - (player.x + 18));
+    const boltSpeed = 940;
+
+    const addBolt = (ang, dmgScale = 1, piercing = false, homing = false, radius = 5) => {
+      bullets.push({
+        x: player.x + 18,
+        y: player.y - 8,
+        vx: Math.cos(ang) * boltSpeed,
+        vy: Math.sin(ang) * boltSpeed,
+        dmg: stats.dmg * dmgScale,
+        color: suit.repulsorColor,
+        piercing,
+        homing,
+        radius,
+        chain: (suit.id === 'doom' || suit.special === 'sorcerer' || suit.special === 'ironhammer') ? (suit.id === 'doom' ? 4 : 2) : 0,
+        life: 1.5
+      });
+    };
+
+    if (suit.id === 'doom') {
+      // 9-Bolt Piercing Homing Arcane Cosmic Fan
+      for (let i = -4; i <= 4; i++) {
+        addBolt(baseAng + i * 0.085, 1.0, true, true, 7);
+      }
+    } else if (suit.special === 'shotgun') {
+      for (let i = -2; i <= 2; i++) {
+        addBolt(baseAng + i * 0.075, 0.55, false, false, 4.5);
+      }
+    } else if (suit.special === 'hulkbuster' || suit.special === 'warmachine' || suit.special === 'nanotech' || suit.special === 'infinity') {
+      addBolt(baseAng - 0.05, 0.75, false, suit.special === 'infinity', 5.5);
+      addBolt(baseAng, 0.9, false, suit.special === 'infinity', 6);
+      addBolt(baseAng + 0.05, 0.75, false, suit.special === 'infinity', 5.5);
+    } else if (suit.special === 'bluesteel' || suit.special === 'rescue' || suit.special === 'ironlad') {
+      addBolt(baseAng - 0.04, 0.85, false, suit.special === 'ironlad', 5);
+      addBolt(baseAng + 0.04, 0.85, false, suit.special === 'ironlad', 5);
+    } else {
+      addBolt(baseAng, 1.0, suit.special === 'im2099', false, 5);
+    }
+
+    SoundEngine.play('repulsor');
+  }
+
+  function paintMissileLocks(px, py) {
+    const stats = getPlayerStats();
+    for (const e of enemies) {
+      if (lockedTargets.length >= stats.maxLocks) break;
+      const d = Math.hypot(e.x - px, e.y - py);
+      if (d < 115 && !lockedTargets.includes(e)) {
+        lockedTargets.push(e);
+      }
+    }
+  }
+
+  function launchMissileSalvo(bonusCount = 0) {
+    const stats = getPlayerStats();
+    const targets = lockedTargets.length > 0 ? [...lockedTargets] : enemies.slice(0, stats.maxLocks);
+    if (targets.length === 0 && bonusCount === 0) return;
+
+    const total = Math.max(targets.length, bonusCount);
+    for (let i = 0; i < total; i++) {
+      const target = targets[i % Math.max(1, targets.length)] || null;
+      const spread = (i - total * 0.5) * 0.18;
+      missiles.push({
+        x: player.x + 10,
+        y: player.y - 12,
+        vx: Math.cos(spread) * 280,
+        vy: Math.sin(spread) * 280 - 90,
+        target,
+        dmg: stats.dmg * 2.4 * (1 + save.upgrades.missiles * 0.25),
+        color: stats.suit.glow,
+        life: 3.2
+      });
+    }
+    lockedTargets = [];
+    SoundEngine.play('missile');
+  }
+
+  function triggerUnibeam() {
+    if (player.unibeam < 100 || player.unibeamActive > 0) return;
+    player.unibeamActive = getSuit(save.equippedSuit).id === 'doom' ? 3.2 : 1.7;
+    SoundEngine.play('unibeam');
+    state.screenShake = 10;
+  }
+
+  function triggerDash() {
+    if (player.dashCd > 0) return;
+    const stats = getPlayerStats();
+    player.dashActive = 0.24;
+    player.dashCd = Math.max(0.4, 2.4 * (1 - stats.cdr));
+    const ang = Math.atan2(player.aimY - player.y, player.aimX - player.x);
+    player.vx = Math.cos(ang) * 920;
+    player.vy = Math.sin(ang) * 920;
+    spawnParticles(player.x, player.y, stats.suit.glow, 16, 260);
+    SoundEngine.play('dash');
+  }
+
+  function triggerEmp() {
+    if (player.empCd > 0) return;
+    const stats = getPlayerStats();
+    player.empCd = Math.max(1.2, 6.5 * (1 - stats.cdr));
+    const radius = 280 + save.upgrades.jarvis * 40 + (stats.suit.id === 'doom' ? 240 : 0);
+    enemyBullets = enemyBullets.filter(b => Math.hypot(b.x - player.x, b.y - player.y) > radius);
+    for (const e of enemies) {
+      if (Math.hypot(e.x - player.x, e.y - player.y) <= radius) {
+        e.hp -= stats.dmg * 4.5;
+        e.stun = 1.6;
+      }
+    }
+    spawnParticles(player.x, player.y, '#c084fc', 34, 420);
+    state.screenShake = 12;
+    SoundEngine.play('emp');
+  }
+
+  /* =========================================================================
+     10. HARD-MODE WAVE & 5-BOSS ARCHETYPE SPAWNER + REALITY WAVE WARP
+     ========================================================================= */
+  const BOSS_ARCHETYPES = [
+    {
+      id: 'leviathan',
+      name: 'CHITAURI LEVIATHAN DREADNOUGHT',
+      color: '#f59e0b',
+      accent: '#d946ef',
+      coreColor: '#fef08a',
+      hpMult: 1.0,
+      radius: 58,
+      escortType: 'drone'
+    },
+    {
+      id: 'ultron',
+      name: 'ULTRON PRIME NEXUS CORE',
+      color: '#ef4444',
+      accent: '#cbd5e1',
+      coreColor: '#fca5a5',
+      hpMult: 1.15,
+      radius: 54,
+      escortType: 'striker'
+    },
+    {
+      id: 'mandarin',
+      name: 'MANDARIN TEN-RINGS BEHEMOTH',
+      color: '#10b981',
+      accent: '#fbbf24',
+      coreColor: '#a7f3d0',
+      hpMult: 1.28,
+      radius: 60,
+      escortType: 'striker'
+    },
+    {
+      id: 'thanos',
+      name: 'THANOS SANCTUARY II WARSHIP',
+      color: '#7c3aed',
+      accent: '#f59e0b',
+      coreColor: '#e879f9',
+      hpMult: 1.45,
+      radius: 64,
+      escortType: 'enforcer'
+    },
+    {
+      id: 'kang',
+      name: 'KANG CHRONO-CITADEL',
+      color: '#059669',
+      accent: '#8b5cf6',
+      coreColor: '#6ee7b7',
+      hpMult: 1.6,
+      radius: 62,
+      escortType: 'enforcer'
+    }
+  ];
+
+  function spawnWaveEnemy() {
+    const w = state.wave;
+    const hpScale = 1 + w * 0.26;
+    const roll = Math.random();
+    let type = 'drone';
+    if (w >= 4 && roll > 0.72) type = 'enforcer';
+    else if (w >= 2 && roll > 0.42) type = 'striker';
+
+    const baseHp = type === 'enforcer' ? 110 : (type === 'striker' ? 58 : 34);
+    const maxHp = Math.round(baseHp * hpScale);
+    enemies.push({
+      x: W + 45,
+      y: 70 + Math.random() * Math.max(140, H - 190),
+      vx: -(170 + Math.random() * 95 + w * 4.5),
+      vy: (Math.random() - 0.5) * 120,
+      hp: maxHp,
+      maxHp,
+      radius: type === 'enforcer' ? 28 : (type === 'striker' ? 21 : 17),
+      type,
+      isBoss: false,
+      fireCd: 0.55 + Math.random() * 0.85,
+      stun: 0,
+      phase: Math.random() * Math.PI * 2,
+      color: type === 'enforcer' ? '#f59e0b' : (type === 'striker' ? '#a855f7' : '#ef4444')
+    });
+  }
+
+  function spawnBossEscort(escortType, bx, by) {
+    const w = state.wave;
+    const hpScale = 1 + w * 0.26;
+    const baseHp = escortType === 'enforcer' ? 110 : (escortType === 'striker' ? 58 : 34);
+    const maxHp = Math.round(baseHp * hpScale);
+    enemies.push({
+      x: bx - 20,
+      y: Math.max(70, Math.min(H - 120, by + (Math.random() - 0.5) * 180)),
+      vx: -(175 + Math.random() * 85 + w * 4.5),
+      vy: (Math.random() - 0.5) * 140,
+      hp: maxHp,
+      maxHp,
+      radius: escortType === 'enforcer' ? 28 : (escortType === 'striker' ? 21 : 17),
+      type: escortType,
+      isBoss: false,
+      fireCd: 0.65 + Math.random() * 0.75,
+      stun: 0,
+      phase: Math.random() * Math.PI * 2,
+      color: escortType === 'enforcer' ? '#f59e0b' : (escortType === 'striker' ? '#a855f7' : '#ef4444')
+    });
+  }
+
+  function startWave(waveNum) {
+    state.wave = waveNum;
+    state.waveTimer = 0;
+    state.spawnTimer = 0.25;
+    state.bossActive = (waveNum % 5 === 0);
+    // Hard-mode squad scaling: 14 + wave * 4
+    state.waveToSpawn = 14 + waveNum * 4;
+
+    if (state.bossActive) {
+      const bossIndex = Math.floor(waveNum / 5 - 1) % BOSS_ARCHETYPES.length;
+      const arch = BOSS_ARCHETYPES[bossIndex];
+      const bossHp = Math.round((1400 + waveNum * 680) * 1.45 * arch.hpMult);
+      enemies.push({
+        x: W + 110,
+        y: H * 0.44,
+        vx: -90,
+        vy: 68,
+        hp: bossHp,
+        maxHp: bossHp,
+        radius: arch.radius,
+        isBoss: true,
+        bossType: arch.id,
+        name: arch.name,
+        fireCd: 1.05,
+        novaCd: 4.2,
+        escortCd: 5.5,
+        escortType: arch.escortType,
+        spinAngle: 0,
+        stun: 0,
+        color: arch.color,
+        accent: arch.accent,
+        coreColor: arch.coreColor
+      });
+      showBannerToast(`⚠️ WAVE ${waveNum}: ${arch.name} INCOMING!`, arch.color);
+    } else {
+      showBannerToast(`⚡ WAVE ${waveNum} ENGAGED — HOSTILE SWARM`, '#38bdf8');
+    }
+  }
+
+  function warpToWave(targetWave) {
+    if (getSuit(save.equippedSuit).id !== 'doom') return;
+    const clamped = Math.max(1, Math.min(9999, Math.floor(targetWave || 1)));
+    enemies = [];
+    enemyBullets = [];
+    lockedTargets = [];
+    spawnParticles(player.x, player.y, '#34d399', 42, 460);
+    state.screenShake = 14;
+    SoundEngine.play('emp');
+    startWave(clamped);
+    showBannerToast(`🌀 REALITY WAVE WARP → WAVE ${clamped}`, '#34d399');
+  }
+
+  function startNewMission(resetProgress = true) {
+    SoundEngine.init();
+    elStart.classList.add('is-hidden');
+    elArmory.classList.add('is-hidden');
+    elCodes.classList.add('is-hidden');
+    elEnd.classList.add('is-hidden');
+    elHud.classList.remove('is-hidden');
+
+    state.screen = 'playing';
+    state.paused = false;
+    updateMobileVisibility();
+
+    if (resetProgress) {
+      const stats = getPlayerStats();
+      player.x = Math.min(180, W * 0.22);
+      player.y = H * 0.46;
+      player.vx = 0;
+      player.vy = 0;
+      player.maxHp = stats.maxHp;
+      player.hp = stats.maxHp;
+      player.unibeam = 0;
+      player.unibeamActive = 0;
+      player.fireCd = 0;
+      player.dashCd = 0;
+      player.dashActive = 0;
+      player.empCd = 0;
+      player.shieldTimer = 0;
+
+      bullets = [];
+      enemyBullets = [];
+      missiles = [];
+      enemies = [];
+      particles = [];
+      lightnings = [];
+      lockedTargets = [];
+
+      state.score = 0;
+      state.kills = 0;
+      startWave(1);
+    }
+  }
+
+  function triggerGameOver() {
+    state.screen = 'gameover';
+    state.paused = true;
+    elMobileUi.classList.add('is-hidden');
+    elDock.classList.add('is-hidden');
+    elEnd.classList.remove('is-hidden');
+
+    document.getElementById('endWave').textContent = state.wave;
+    document.getElementById('endScore').textContent = state.score.toLocaleString();
+    document.getElementById('endCredits').textContent = save.credits.toLocaleString();
+    document.getElementById('endKills').textContent = state.kills.toLocaleString();
+    persistSave();
+  }
+
+  /* =========================================================================
+     11. CORE SIMULATION & RENDER LOOP
+     ========================================================================= */
+  function updateSimulation(dt, time) {
+    if (state.paused) return;
+
+    const stats = getPlayerStats();
+    const suit = stats.suit;
+    player.maxHp = stats.maxHp;
+    if (player.hp > player.maxHp) player.hp = player.maxHp;
+
+    // Passive Regeneration (Dr. Doom +50,000 HP/s, Nanotech +3 HP/s)
+    if (suit.id === 'doom' && player.hp > 0 && player.hp < player.maxHp) {
+      player.hp = Math.min(player.maxHp, player.hp + 50000 * dt);
+    } else if (suit.special === 'nanotech' && player.hp > 0 && player.hp < player.maxHp) {
+      player.hp = Math.min(player.maxHp, player.hp + 3 * dt);
+    }
+
+    // Cooldowns & Timers
+    if (player.fireCd > 0) player.fireCd -= dt;
+    if (player.dashCd > 0) player.dashCd -= dt;
+    if (player.dashActive > 0) player.dashActive -= dt;
+    if (player.empCd > 0) player.empCd -= dt;
+    if (player.shieldTimer > 0) player.shieldTimer -= dt;
+    if (state.screenShake > 0) state.screenShake = Math.max(0, state.screenShake - dt * 28);
+    if (state.toastTimer > 0) state.toastTimer = Math.max(0, state.toastTimer - dt);
+
+    // Player Movement (Keyboard + Virtual Joystick)
+    let ix = joyVec.x;
+    let iy = joyVec.y;
+    if (keys['KeyW'] || keys['ArrowUp']) iy -= 1;
+    if (keys['KeyS'] || keys['ArrowDown']) iy += 1;
+    if (keys['KeyA'] || keys['ArrowLeft']) ix -= 1;
+    if (keys['KeyD'] || keys['ArrowRight']) ix += 1;
+
+    const mag = Math.hypot(ix, iy);
+    if (mag > 1) { ix /= mag; iy /= mag; }
+
+    if (player.dashActive <= 0) {
+      player.vx = ix * stats.speed;
+      player.vy = iy * stats.speed;
+    }
+    player.x = Math.max(36, Math.min(W - 44, player.x + player.vx * dt));
+    player.y = Math.max(58, Math.min(H - 64, player.y + player.vy * dt));
+
+    // Wave Spawning & Progression
+    if (state.waveToSpawn > 0) {
+      state.spawnTimer -= dt;
+      if (state.spawnTimer <= 0) {
+        spawnWaveEnemy();
+        state.waveToSpawn--;
+        state.spawnTimer = Math.max(0.26, 0.85 - state.wave * 0.025);
+      }
+    } else if (enemies.length === 0) {
+      // Wave Cleared! Record Wave 50 Mastery if reached
+      if (state.wave >= 50 && suit.id !== 'doom' && !save.wave50Cleared[suit.id]) {
+        save.wave50Cleared[suit.id] = true;
+        persistSave();
+        showBannerToast(`👑 ${suit.name} MASTERED WAVE 50!`, '#fbbf24');
+        unlockDoomIfEligible();
+      }
+      startWave(state.wave + 1);
+    }
+
+    // J.A.R.V.I.S. Predictive Auto-Shoot & Manual Fire
+    let predictedTarget = null;
+    let leadPoint = null;
+    const autoEngaged = save.autoShootUnlocked && state.autoShoot;
+    if (autoEngaged) {
+      predictedTarget = selectPredictiveTarget();
+      if (predictedTarget) {
+        leadPoint = predictAimPoint(predictedTarget, 940);
+        player.aimX = leadPoint.x;
+        player.aimY = leadPoint.y;
+        paintMissileLocks(leadPoint.x, leadPoint.y);
+      }
+    }
+
+    const wantsFire = mouseDown || mobileFireHeld || (autoEngaged && predictedTarget !== null);
+    if (wantsFire && player.fireCd <= 0) {
+      firePrimaryWeapon(player.aimX, player.aimY);
+      player.fireCd = 1 / stats.fireRate;
+    }
+
+    // Active Chest Unibeam Beam Damage
+    if (player.unibeamActive > 0) {
+      const drainRate = suit.id === 'doom' ? 24 : 58;
+      player.unibeam = Math.max(0, player.unibeam - drainRate * dt);
+      player.unibeamActive -= dt;
+      if (player.unibeam <= 0) player.unibeamActive = 0;
+
+      const beamHalfH = suit.id === 'doom' ? 42 : (suit.special === 'heartbreaker' ? 22 : 14);
+      const beamDps = stats.dmg * (suit.id === 'doom' ? 18 : 9.5);
+      for (const e of enemies) {
+        if (e.x > player.x && Math.abs(e.y - (player.y - 6)) <= e.radius + beamHalfH) {
+          e.hp -= beamDps * dt;
+          if (Math.random() < 0.35) spawnParticles(e.x, e.y, suit.unibeamColor, 2, 160);
+        }
+      }
+    }
+
+    // Update Player Bolts
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      const b = bullets[i];
+      b.life -= dt;
+
+      if (b.homing && enemies.length > 0) {
+        let nearest = enemies[0], nd = Infinity;
+        for (const e of enemies) {
+          const d = Math.hypot(e.x - b.x, e.y - b.y);
+          if (d < nd) { nd = d; nearest = e; }
+        }
+        const desired = Math.atan2(nearest.y - b.y, nearest.x - b.x);
+        const cur = Math.atan2(b.vy, b.vx);
+        const spd = Math.hypot(b.vx, b.vy);
+        const nextAng = cur + Math.atan2(Math.sin(desired - cur), Math.cos(desired - cur)) * Math.min(1, dt * 9);
+        b.vx = Math.cos(nextAng) * spd;
+        b.vy = Math.sin(nextAng) * spd;
+      }
+
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+
+      let hit = false;
+      for (const e of enemies) {
+        if (Math.hypot(e.x - b.x, e.y - b.y) <= e.radius + b.radius) {
+          e.hp -= b.dmg;
+          spawnParticles(b.x, b.y, b.color, 4, 140);
+
+          // Chain Lightning Arcs (Dr. Doom, Sorcerer Supreme, Iron Hammer)
+          if (b.chain > 0) {
+            let chained = 0;
+            for (const other of enemies) {
+              if (other !== e && chained < b.chain && Math.hypot(other.x - e.x, other.y - e.y) < 220) {
+                other.hp -= b.dmg * (suit.id === 'doom' ? 1.5 : 0.65);
+                lightnings.push({ x1: e.x, y1: e.y, x2: other.x, y2: other.y, color: b.color, life: 0.14 });
+                chained++;
+              }
+            }
+          }
+
+          hit = true;
+          if (!b.piercing) break;
+        }
+      }
+
+      if ((hit && !b.piercing) || b.life <= 0 || b.x < -50 || b.x > W + 80 || b.y < -50 || b.y > H + 50) {
+        bullets.splice(i, 1);
+      }
+    }
+
+    // Update Homing Micro-Missiles
+    for (let i = missiles.length - 1; i >= 0; i--) {
+      const m = missiles[i];
+      m.life -= dt;
+      if (!m.target || m.target.hp <= 0) {
+        m.target = enemies[0] || null;
+      }
+      if (m.target) {
+        const ang = Math.atan2(m.target.y - m.y, m.target.x - m.x);
+        m.vx += Math.cos(ang) * 1450 * dt;
+        m.vy += Math.sin(ang) * 1450 * dt;
+        const spd = Math.hypot(m.vx, m.vy);
+        if (spd > 680) { m.vx = (m.vx / spd) * 680; m.vy = (m.vy / spd) * 680; }
+      }
+      m.x += m.vx * dt;
+      m.y += m.vy * dt;
+
+      let exploded = false;
+      for (const e of enemies) {
+        if (Math.hypot(e.x - m.x, e.y - m.y) <= e.radius + 10) {
+          e.hp -= m.dmg;
+          spawnParticles(m.x, m.y, '#fbbf24', 12, 220);
+          SoundEngine.play('explosion');
+          exploded = true;
+          break;
+        }
+      }
+      if (exploded || m.life <= 0 || m.x > W + 80 || m.x < -80) {
+        missiles.splice(i, 1);
+      }
+    }
+
+    // Update Enemies & 5-Archetype Bosses
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      const e = enemies[i];
+      if (e.stun > 0) {
+        e.stun -= dt;
+      } else if (e.isBoss) {
+        // Boss Movement & Multi-Phase Attacks across 5 Archetypes
+        const rage = e.hp < e.maxHp * 0.55;
+        e.spinAngle = (e.spinAngle || 0) + dt * (rage ? 2.8 : 1.5);
+        if (e.x > W * 0.74) e.x += e.vx * dt;
+        e.y += e.vy * (rage ? 1.32 : 1.0) * dt;
+        if (e.y < 110 || e.y > H - 110) e.vy *= -1;
+
+        // Periodic Boss Escort Deployment
+        e.escortCd = (e.escortCd || 5.5) - dt;
+        if (e.escortCd <= 0 && enemies.length < 10) {
+          e.escortCd = rage ? 4.8 : 7.0;
+          spawnBossEscort(e.escortType || 'drone', e.x, e.y);
+          if (rage) spawnBossEscort(e.escortType || 'drone', e.x, e.y);
+        }
+
+        e.fireCd -= dt;
+        if (e.fireCd <= 0) {
+          const baseAng = Math.atan2(player.y - e.y, player.x - e.x);
+          const lead = predictAimPoint(player, 460);
+          const leadAng = Math.atan2(lead.y - e.y, lead.x - e.x);
+
+          if (e.bossType === 'ultron') {
+            // Ultron Prime: High-speed crimson vibranium laser fan
+            e.fireCd = rage ? 0.52 : 0.85;
+            const count = rage ? 7 : 5;
+            for (let k = 0; k < count; k++) {
+              const ang = leadAng + (k - (count - 1) * 0.5) * 0.12;
+              enemyBullets.push({
+                x: e.x - 38, y: e.y,
+                vx: Math.cos(ang) * 490, vy: Math.sin(ang) * 490,
+                dmg: 13 + state.wave * 1.35, color: '#ef4444'
+              });
+            }
+          } else if (e.bossType === 'mandarin') {
+            // Mandarin Ten-Rings: Rotating emerald-gold spiral volleys
+            e.fireCd = rage ? 0.42 : 0.72;
+            const arms = rage ? 5 : 3;
+            for (let k = 0; k < arms; k++) {
+              const ang = e.spinAngle + (Math.PI * 2 * k) / arms;
+              enemyBullets.push({
+                x: e.x + Math.cos(ang) * 34, y: e.y + Math.sin(ang) * 34,
+                vx: Math.cos(ang) * 385, vy: Math.sin(ang) * 385,
+                dmg: 13 + state.wave * 1.35, color: k % 2 === 0 ? '#10b981' : '#fbbf24'
+              });
+            }
+          } else if (e.bossType === 'thanos') {
+            // Thanos Sanctuary II: Heavy Infinity-stone meteoric barrage
+            e.fireCd = rage ? 0.58 : 0.95;
+            const infinityColors = ['#a855f7', '#38bdf8', '#ef4444', '#f97316', '#10b981', '#eab308'];
+            const count = rage ? 6 : 4;
+            for (let k = 0; k < count; k++) {
+              const ang = leadAng + (k - (count - 1) * 0.5) * 0.17;
+              enemyBullets.push({
+                x: e.x - 42, y: e.y + (k - (count - 1) * 0.5) * 14,
+                vx: Math.cos(ang) * 455, vy: Math.sin(ang) * 455,
+                dmg: 16 + state.wave * 1.5, color: infinityColors[k % infinityColors.length]
+              });
+            }
+          } else if (e.bossType === 'kang') {
+            // Kang Chrono-Citadel: Cross-fire tachyon beams + predictive bolts
+            e.fireCd = rage ? 0.48 : 0.82;
+            const count = rage ? 6 : 4;
+            for (let k = 0; k < count; k++) {
+              const ang = (k % 2 === 0 ? leadAng : baseAng) + (k - (count - 1) * 0.5) * 0.15;
+              enemyBullets.push({
+                x: e.x - 36, y: e.y,
+                vx: Math.cos(ang) * 510, vy: Math.sin(ang) * 510,
+                dmg: 15 + state.wave * 1.45, color: k % 2 === 0 ? '#34d399' : '#a855f7'
+              });
+            }
+          } else {
+            // Chitauri Leviathan Dreadnought: Armored plasma salvos
+            e.fireCd = rage ? 0.65 : 1.05;
+            const count = rage ? 6 : 4;
+            for (let k = 0; k < count; k++) {
+              const ang = baseAng + (k - (count - 1) * 0.5) * 0.16;
+              enemyBullets.push({
+                x: e.x - 36, y: e.y,
+                vx: Math.cos(ang) * 430, vy: Math.sin(ang) * 430,
+                dmg: 14 + state.wave * 1.4, color: '#fb7185'
+              });
+            }
+          }
+        }
+
+        // Below 55% HP: Archetype-Specific Radial Shockwave Nova
+        if (rage) {
+          e.novaCd -= dt;
+          if (e.novaCd <= 0) {
+            e.novaCd = e.bossType === 'kang' ? 3.1 : 3.6;
+            const ringCount = (e.bossType === 'thanos' || e.bossType === 'kang') ? 16 : 12;
+            for (let k = 0; k < ringCount; k++) {
+              const ang = (Math.PI * 2 * k) / ringCount + (e.spinAngle || 0) * 0.3;
+              enemyBullets.push({
+                x: e.x, y: e.y,
+                vx: Math.cos(ang) * 355, vy: Math.sin(ang) * 355,
+                dmg: 12 + state.wave, color: e.accent || '#f59e0b'
+              });
+            }
+          }
+        }
+      } else {
+        // Standard & Elite Hard-Mode Hostiles
+        e.phase += dt * 3.2;
+        e.x += e.vx * dt;
+        e.y += Math.sin(e.phase) * 95 * dt + (player.y - e.y) * 0.45 * dt;
+
+        e.fireCd -= dt;
+        if (e.fireCd <= 0 && e.x < W - 20 && e.x > player.x + 40) {
+          e.fireCd = Math.max(0.75, 1.75 - state.wave * 0.04);
+          const lead = predictAimPoint(player, 420);
+          const baseAng = Math.atan2(lead.y - e.y, lead.x - e.x);
+          const spreadCount = (e.type === 'enforcer' || state.wave >= 6) ? 3 : (e.type === 'striker' ? 2 : 1);
+          for (let s = 0; s < spreadCount; s++) {
+            const ang = baseAng + (s - (spreadCount - 1) * 0.5) * 0.14;
+            enemyBullets.push({
+              x: e.x - e.radius, y: e.y,
+              vx: Math.cos(ang) * (360 + state.wave * 8),
+              vy: Math.sin(ang) * (360 + state.wave * 8),
+              dmg: 8 + state.wave * 1.1,
+              color: e.color
+            });
+          }
+        }
+      }
+
+      // Collision with Player Hull
+      if (Math.hypot(e.x - player.x, e.y - player.y) < e.radius + 20) {
+        if (player.shieldTimer <= 0 && player.dashActive <= 0) {
+          player.hp -= (14 + state.wave * 1.2);
+          state.screenShake = 8;
+        }
+        if (!e.isBoss) e.hp = 0;
+      }
+
+      // Enemy Destroyed
+      if (e.hp <= 0) {
+        spawnParticles(e.x, e.y, e.color, e.isBoss ? 48 : 16, e.isBoss ? 360 : 210);
+        SoundEngine.play('explosion');
+        state.kills++;
+        state.score += Math.round((e.isBoss ? 2500 : 120) * (1 + state.wave * 0.15));
+
+        // Charge Unibeam
+        const beamGain = (e.isBoss ? 45 : 14) * (suit.id === 'doom' ? 15.0 : (1 + save.upgrades.reactor * 0.18));
+        player.unibeam = Math.min(100, player.unibeam + beamGain);
+
+        // Siphon Heals (Dr. Doom +25,000 HP/kill, Superior / Zombie +6 HP/kill)
+        if (suit.id === 'doom' && player.hp > 0) {
+          player.hp = Math.min(player.maxHp, player.hp + 25000);
+        } else if ((suit.special === 'superior' || suit.special === 'zombie') && player.hp > 0) {
+          player.hp = Math.min(player.maxHp, player.hp + 6);
+        }
+
+        // Stark Credits Earned
+        const creditMult = (suit.id === 'doom' ? 100.0 : (suit.special === 'gold' || suit.special === 'zombie' ? 1.5 : 1.0)) * (1 + save.upgrades.jarvis * 0.15);
+        const earned = Math.round((15 + e.maxHp * 0.25) * creditMult);
+        save.credits += earned;
+
+        lockedTargets = lockedTargets.filter(t => t !== e);
+        enemies.splice(i, 1);
+      } else if (e.x < -80) {
+        enemies.splice(i, 1);
+      }
+    }
+
+    // Update Enemy Projectiles
+    for (let i = enemyBullets.length - 1; i >= 0; i--) {
+      const eb = enemyBullets[i];
+      eb.x += eb.vx * dt;
+      eb.y += eb.vy * dt;
+      if (Math.hypot(eb.x - player.x, eb.y - player.y) < 18) {
+        if (player.shieldTimer <= 0 && player.dashActive <= 0) {
+          player.hp -= eb.dmg;
+          state.screenShake = 6;
+          spawnParticles(player.x, player.y, '#ef4444', 6, 140);
+        }
+        enemyBullets.splice(i, 1);
+        continue;
+      }
+      if (eb.x < -40 || eb.x > W + 40 || eb.y < -40 || eb.y > H + 40) {
+        enemyBullets.splice(i, 1);
+      }
+    }
+
+    // Update Particles & Chain Lightnings
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+    for (let i = lightnings.length - 1; i >= 0; i--) {
+      lightnings[i].life -= dt;
+      if (lightnings[i].life <= 0) lightnings.splice(i, 1);
+    }
+
+    // Check Defeat
+    if (player.hp <= 0) {
+      player.hp = 0;
+      triggerGameOver();
+    }
+
+    // Store leadPoint for HUD overlay rendering
+    player._leadPoint = leadPoint;
+    player._predictedTarget = predictedTarget;
+  }
+
+  function renderCombat(time) {
+    ctx.save();
+    if (state.screenShake > 0) {
+      ctx.translate((Math.random() - 0.5) * state.screenShake, (Math.random() - 0.5) * state.screenShake);
+    }
+
+    // 1. Chest Unibeam Laser
+    if (player.unibeamActive > 0) {
+      const suit = getSuit(save.equippedSuit);
+      const beamH = suit.id === 'doom' ? 84 : (suit.special === 'heartbreaker' ? 44 : 28);
+      const grad = ctx.createLinearGradient(player.x, player.y - beamH * 0.5, player.x, player.y + beamH * 0.5);
+      grad.addColorStop(0, 'transparent');
+      grad.addColorStop(0.25, suit.unibeamColor);
+      grad.addColorStop(0.5, '#ffffff');
+      grad.addColorStop(0.75, suit.unibeamColor);
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad;
+      ctx.fillRect(player.x + 8, player.y - 6 - beamH * 0.5, W, beamH);
+    }
+
+    // 2. Hero Stickman Suit & Aegis Shield
+    const suit = getSuit(save.equippedSuit);
+    const tilt = Math.max(-0.35, Math.min(0.35, player.vy * 0.0008));
+    drawStickmanSuit(ctx, player.x, player.y, suit.special === 'hulkbuster' || suit.special === 'igor' ? 1.25 : 1.0, suit, time, tilt);
+
+    if (player.shieldTimer > 0) {
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, 38, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // 3. Player Repulsor Bolts
+    for (const b of bullets) {
+      ctx.save();
+      ctx.fillStyle = b.color;
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 4. Micro-Missiles
+    for (const m of missiles) {
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.arc(m.x, m.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 5. Enemies & 5-Archetype Bosses
+    for (const e of enemies) {
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      ctx.fillStyle = e.color;
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 2;
+
+      if (e.isBoss) {
+        const rage = e.hp < e.maxHp * 0.55;
+        const spin = e.spinAngle || 0;
+
+        if (e.bossType === 'ultron') {
+          // ULTRON PRIME NEXUS CORE: Angular crimson-and-chrome AI fortress
+          ctx.fillStyle = '#1e293b';
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(-54, 0);
+          ctx.lineTo(-18, -42);
+          ctx.lineTo(36, -34);
+          ctx.lineTo(54, 0);
+          ctx.lineTo(36, 34);
+          ctx.lineTo(-18, 42);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Crimson Armor Chevrons & Vibranium Weak-Point Nodes
+          ctx.fillStyle = '#dc2626';
+          ctx.beginPath();
+          ctx.moveTo(-36, -16); ctx.lineTo(12, -26); ctx.lineTo(4, 0); ctx.lineTo(12, 26); ctx.lineTo(-36, 16);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = rage ? '#fef08a' : '#fca5a5';
+          ctx.beginPath();
+          ctx.arc(-14, 0, 12, 0, Math.PI * 2);
+          ctx.arc(16, -20, 6, 0, Math.PI * 2);
+          ctx.arc(16, 20, 6, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (e.bossType === 'mandarin') {
+          // MANDARIN TEN-RINGS BEHEMOTH: Emerald-gold hull + 10 orbiting energy rings
+          ctx.fillStyle = '#064e3b';
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 56, 34, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // 10 Orbiting Ring Weak-Point Emitters
+          for (let r = 0; r < 10; r++) {
+            const rAng = spin + (Math.PI * 2 * r) / 10;
+            const rx = Math.cos(rAng) * 66;
+            const ry = Math.sin(rAng) * 46;
+            ctx.strokeStyle = r % 2 === 0 ? '#34d399' : '#fbbf24';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(rx, ry, 6.5, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          ctx.fillStyle = '#a7f3d0';
+          ctx.beginPath();
+          ctx.arc(-10, 0, 13, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (e.bossType === 'thanos') {
+          // THANOS SANCTUARY II WARSHIP: Massive violet-obsidian dreadnought + Infinity nodes
+          ctx.fillStyle = '#1e1b4b';
+          ctx.strokeStyle = '#a855f7';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(-64, 0);
+          ctx.lineTo(-28, -46);
+          ctx.lineTo(54, -38);
+          ctx.lineTo(64, 0);
+          ctx.lineTo(54, 38);
+          ctx.lineTo(-28, 46);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Gold Trim & 6 Infinity Core Weak Points
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(-22, -24, 52, 48);
+          const stoneColors = ['#a855f7', '#38bdf8', '#ef4444', '#f97316', '#10b981', '#eab308'];
+          for (let s = 0; s < 6; s++) {
+            const sx = -14 + (s % 3) * 18;
+            const sy = s < 3 ? -14 : 14;
+            ctx.fillStyle = stoneColors[s];
+            ctx.beginPath();
+            ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } else if (e.bossType === 'kang') {
+          // KANG CHRONO-CITADEL: Emerald-violet temporal war-engine + rotating chrono rings
+          ctx.fillStyle = '#064e3b';
+          ctx.strokeStyle = '#a855f7';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(-60, 0);
+          ctx.lineTo(0, -48);
+          ctx.lineTo(60, 0);
+          ctx.lineTo(0, 48);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Rotating Temporal Rings & Pylon Weak Points
+          ctx.save();
+          ctx.rotate(spin);
+          ctx.strokeStyle = '#34d399';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(-32, -32, 64, 64);
+          ctx.restore();
+
+          ctx.fillStyle = '#6ee7b7';
+          ctx.beginPath();
+          ctx.arc(0, 0, 14, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // CHITAURI LEVIATHAN DREADNOUGHT: Serpentine gold-magenta armored dreadnought
+          ctx.fillStyle = '#78350f';
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(-58, 0);
+          ctx.lineTo(-22, -38);
+          ctx.lineTo(48, -28);
+          ctx.lineTo(58, 0);
+          ctx.lineTo(48, 28);
+          ctx.lineTo(-22, 38);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Magenta Chitauri Energy Conduits & Triple Turret Weak Points
+          ctx.fillStyle = '#d946ef';
+          ctx.beginPath();
+          ctx.arc(-14, 0, 13, 0, Math.PI * 2);
+          ctx.arc(14, -20, 6.5, 0, Math.PI * 2);
+          ctx.arc(14, 20, 6.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        // Sleek Fighter Drone / Enforcer Silhouette
+        ctx.beginPath();
+        ctx.moveTo(-e.radius, 0);
+        ctx.lineTo(e.radius * 0.7, -e.radius * 0.75);
+        ctx.lineTo(e.radius * 0.35, 0);
+        ctx.lineTo(e.radius * 0.7, e.radius * 0.75);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Mini HP Bar
+        const pct = Math.max(0, e.hp / e.maxHp);
+        ctx.fillStyle = 'rgba(15,23,42,0.85)';
+        ctx.fillRect(-18, -e.radius - 10, 36, 4);
+        ctx.fillStyle = '#34d399';
+        ctx.fillRect(-18, -e.radius - 10, 36 * pct, 4);
+      }
+      ctx.restore();
+    }
+
+    // 6. Enemy Plasma Bolts
+    for (const eb of enemyBullets) {
+      ctx.fillStyle = eb.color;
+      ctx.beginPath();
+      ctx.arc(eb.x, eb.y, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 7. Chain Lightning Arcs
+    for (const l of lightnings) {
+      ctx.save();
+      ctx.strokeStyle = l.color;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(l.x1, l.y1);
+      ctx.lineTo((l.x1 + l.x2) * 0.5 + (Math.random() - 0.5) * 24, (l.y1 + l.y2) * 0.5 + (Math.random() - 0.5) * 24);
+      ctx.lineTo(l.x2, l.y2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 8. Particles
+    for (const p of particles) {
+      ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // 9. Target Lock Diamonds & J.A.R.V.I.S. Predictive Lead Reticle
+    for (const lt of lockedTargets) {
+      ctx.save();
+      ctx.translate(lt.x, lt.y);
+      ctx.rotate(time * 2.5);
+      ctx.strokeStyle = '#f43f5e';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-18, -18, 36, 36);
+      ctx.restore();
+    }
+
+    if (save.autoShootUnlocked && state.autoShoot && player._predictedTarget && player._leadPoint) {
+      const lp = player._leadPoint;
+      ctx.save();
+      ctx.setLineDash([5, 5]);
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
+      ctx.beginPath();
+      ctx.moveTo(player.x + 18, player.y - 8);
+      ctx.lineTo(lp.x, lp.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.strokeStyle = '#22d3ee';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(lp.x, lp.y, 11, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 10. Tactical Banner Toast
+    if (state.toastTimer > 0 && state.toastText) {
+      ctx.save();
+      ctx.font = '800 13px Orbitron, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(8, 15, 32, 0.85)';
+      const tw = ctx.measureText(state.toastText).width + 32;
+      ctx.beginPath();
+      ctx.roundRect(W * 0.5 - tw * 0.5, 86, tw, 30, 10);
+      ctx.fill();
+      ctx.strokeStyle = state.toastColor;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = state.toastColor;
+      ctx.fillText(state.toastText, W * 0.5, 105);
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+
+  function updateHudDom() {
+    if (state.screen !== 'playing') return;
+    const suit = getSuit(save.equippedSuit);
+    document.getElementById('hudSuitBadge').textContent = suit.name.split('—')[0].trim();
+    document.getElementById('hudWave').textContent = `WAVE ${state.wave}`;
+    document.getElementById('hudHpText').textContent = `${Math.ceil(player.hp).toLocaleString()} / ${player.maxHp.toLocaleString()}`;
+    document.getElementById('hudHpBar').style.width = `${Math.max(0, Math.min(100, (player.hp / player.maxHp) * 100))}%`;
+
+    const beamPct = Math.round(player.unibeam);
+    document.getElementById('hudBeamText').textContent = `${beamPct}%`;
+    document.getElementById('hudBeamBar').style.width = `${beamPct}%`;
+    document.getElementById('hudCredits').textContent = save.credits.toLocaleString();
+    document.getElementById('hudScore').textContent = state.score.toLocaleString();
+
+    // Boss HUD
+    const boss = enemies.find(e => e.isBoss);
+    const elBossHud = document.getElementById('bossHud');
+    if (boss) {
+      elBossHud.classList.remove('is-hidden');
+      const bpct = Math.max(0, Math.ceil((boss.hp / boss.maxHp) * 100));
+      document.getElementById('bossName').textContent = boss.name;
+      document.getElementById('bossHpText').textContent = `${bpct}%`;
+      document.getElementById('bossHpBar').style.width = `${bpct}%`;
+    } else {
+      elBossHud.classList.add('is-hidden');
+    }
+
+    // Auto-Shoot & Targeting Pills
+    const autoBtn = document.getElementById('hudAutoBtn');
+    const mobAutoBtn = document.getElementById('mobAutoBtn');
+    if (!save.autoShootUnlocked) {
+      autoBtn.textContent = '🔒 AUTO: LOCKED [T]';
+      autoBtn.className = 'jarvis-btn px-2.5 py-1.5 rounded-xl font-hud font-bold text-[10px] sm:text-xs text-rose-300';
+      mobAutoBtn.textContent = 'AUTO:🔒';
+    } else if (state.autoShoot) {
+      autoBtn.textContent = '⚡ AUTO: ON [T]';
+      autoBtn.className = 'jarvis-btn px-2.5 py-1.5 rounded-xl font-hud font-bold text-[10px] sm:text-xs text-emerald-300';
+      mobAutoBtn.textContent = 'AUTO:ON';
+    } else {
+      autoBtn.textContent = '⏸️ AUTO: OFF [T]';
+      autoBtn.className = 'jarvis-btn px-2.5 py-1.5 rounded-xl font-hud font-bold text-[10px] sm:text-xs text-amber-300';
+      mobAutoBtn.textContent = 'AUTO:OFF';
+    }
+    document.getElementById('hudModeBtn').textContent = `🎯 MODE: ${state.autoMode} [Y]`;
+
+    // Desktop & Mobile Cooldowns
+    const dashTxt = player.dashCd <= 0 ? 'RDY' : `${player.dashCd.toFixed(1)}s`;
+    const empTxt = player.empCd <= 0 ? 'RDY' : `${player.empCd.toFixed(1)}s`;
+    document.getElementById('dockDashCd').textContent = dashTxt;
+    document.getElementById('dockEmpCd').textContent = empTxt;
+    document.getElementById('dockLocksBadge').textContent = lockedTargets.length;
+    document.getElementById('dockBeamPct').textContent = `${beamPct}%`;
+
+    document.getElementById('mobDashCd').textContent = dashTxt;
+    document.getElementById('mobEmpCd').textContent = empTxt;
+    document.getElementById('mobLockCount').textContent = lockedTargets.length;
+    document.getElementById('mobBeamPct').textContent = `${beamPct}%`;
+
+    const mobBeamBtn = document.getElementById('mobBeamBtn');
+    mobBeamBtn.classList.toggle('unibeam-ready', beamPct >= 100);
+
+    // Dr. Doom Exclusive Reality Wave Warp Dock
+    document.getElementById('doomWarpDock').classList.toggle('is-hidden', suit.id !== 'doom');
+  }
+
+  /* =========================================================================
+     12. ARMORY & SHOP MODAL LOGIC
+     ========================================================================= */
+  function openArmory() {
+    state.paused = true;
+    state.previewSuitId = save.equippedSuit;
+    elArmory.classList.remove('is-hidden');
+    renderArmory();
+  }
+
+  function closeArmory() {
+    elArmory.classList.add('is-hidden');
+    if (state.screen === 'playing') state.paused = false;
+  }
+
+  function renderArmory() {
+    document.getElementById('armoryCredits').textContent = save.credits.toLocaleString();
+
+    // Update Dr. Doom Prestige Banner
+    const masteredCount = BASE_SUIT_IDS.filter(id => !!save.wave50Cleared[id]).length;
+    document.getElementById('doomMasteryCount').textContent = `${masteredCount} / ${BASE_SUIT_IDS.length} W50`;
+    document.getElementById('doomMasteryBar').style.width = `${(masteredCount / BASE_SUIT_IDS.length) * 100}%`;
+
+    // Update Holographic Preview Telemetry
+    const pSuit = getSuit(state.previewSuitId);
+    document.getElementById('previewSuitName').textContent = pSuit.name;
+    document.getElementById('previewSuitRole').textContent = `${pSuit.category} • ${pSuit.role}`;
+    document.getElementById('previewSuitDesc').textContent = pSuit.desc;
+
+    document.getElementById('statDmgVal').textContent = pSuit.id === 'doom' ? '1,000,000x' : `${pSuit.dmgMult.toFixed(2)}x`;
+    document.getElementById('statDmgBar').style.width = `${Math.min(100, (pSuit.dmgMult / 3.0) * 100)}%`;
+
+    const hpTotal = 100 + pSuit.hpBonus + save.upgrades.hull * 35;
+    document.getElementById('statHpVal').textContent = hpTotal.toLocaleString();
+    document.getElementById('statHpBar').style.width = `${Math.min(100, (hpTotal / 320) * 100)}%`;
+
+    document.getElementById('statSpdVal').textContent = `${pSuit.speedMult.toFixed(2)}x`;
+    document.getElementById('statSpdBar').style.width = `${Math.min(100, (pSuit.speedMult / 1.8) * 100)}%`;
+
+    document.getElementById('statRateVal').textContent = `${pSuit.fireRateMult.toFixed(2)}x`;
+    document.getElementById('statRateBar').style.width = `${Math.min(100, (pSuit.fireRateMult / 2.6) * 100)}%`;
+
+    // Render Suits Grid
+    const suitsGrid = document.getElementById('suitsGrid');
+    suitsGrid.innerHTML = '';
+    const filtered = state.selectedCategory === 'ALL' ? SUITS : SUITS.filter(s => s.category === state.selectedCategory);
+
+    for (const s of filtered) {
+      const unlocked = save.unlockedSuits.includes(s.id);
+      const equipped = save.equippedSuit === s.id;
+      const w50 = !!save.wave50Cleared[s.id];
+
+      const card = document.createElement('div');
+      card.className = `rounded-2xl p-3 border transition cursor-pointer flex flex-col justify-between ${
+        equipped ? 'bg-cyan-950/80 border-amber-400 shadow-lg' : 'bg-slate-900/85 border-slate-700/80 hover:border-cyan-400/60'
+      }`;
+      card.addEventListener('click', () => {
+        state.previewSuitId = s.id;
+        renderArmory();
+      });
+
+      const badgeHtml = s.id === 'doom'
+        ? `<span class="text-[10px] font-hud px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">OMNIPOTENT</span>`
+        : (w50
+          ? `<span class="text-[10px] font-hud px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">👑 W50 CLEARED</span>`
+          : `<span class="text-[10px] font-hud px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">${s.category}</span>`);
+
+      let actionBtn = '';
+      if (equipped) {
+        actionBtn = `<button class="w-full mt-2 py-1.5 rounded-xl bg-emerald-500/25 border border-emerald-400 text-emerald-300 font-hud font-bold text-[11px]">✓ EQUIPPED</button>`;
+      } else if (unlocked) {
+        actionBtn = `<button data-equip="${s.id}" class="w-full mt-2 py-1.5 rounded-xl jarvis-btn font-hud font-bold text-[11px] text-white">EQUIP SUIT</button>`;
+      } else if (s.id === 'doom') {
+        actionBtn = `<button disabled class="w-full mt-2 py-1.5 rounded-xl bg-slate-800/90 border border-emerald-500/30 text-emerald-300/80 font-hud font-bold text-[10px]">MASTER ALL 34 W50</button>`;
+      } else {
+        const canBuy = save.credits >= s.cost;
+        actionBtn = `<button data-buy="${s.id}" class="w-full mt-2 py-1.5 rounded-xl font-hud font-bold text-[11px] ${
+          canBuy ? 'stark-gold-btn text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+        }">UNLOCK • ${s.cost} CR</button>`;
+      }
+
+      card.innerHTML = `
+        <div>
+          <div class="flex items-center justify-between gap-1 mb-1">
+            <span class="w-3 h-3 rounded-full inline-block border border-white/40" style="background:${s.primary}"></span>
+            ${badgeHtml}
+          </div>
+          <div class="font-hud font-bold text-xs text-white leading-snug">${s.name}</div>
+          <div class="text-[10px] text-slate-400 mt-0.5 line-clamp-2">${s.desc}</div>
+        </div>
+        ${actionBtn}
+      `;
+      suitsGrid.appendChild(card);
+    }
+
+    // Bind Equip & Buy Buttons
+    suitsGrid.querySelectorAll('[data-equip]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        save.equippedSuit = btn.dataset.equip;
+        state.previewSuitId = save.equippedSuit;
+        const stats = getPlayerStats();
+        player.maxHp = stats.maxHp;
+        player.hp = stats.maxHp;
+        persistSave();
+        SoundEngine.play('code');
+        renderArmory();
+      });
+    });
+
+    suitsGrid.querySelectorAll('[data-buy]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const s = getSuit(btn.dataset.buy);
+        if (save.credits >= s.cost && !save.unlockedSuits.includes(s.id)) {
+          save.credits -= s.cost;
+          save.unlockedSuits.push(s.id);
+          save.equippedSuit = s.id;
+          state.previewSuitId = s.id;
+          const stats = getPlayerStats();
+          player.maxHp = stats.maxHp;
+          player.hp = stats.maxHp;
+          persistSave();
+          SoundEngine.play('code');
+          renderArmory();
+        }
+      });
+    });
+
+    // Render 6 Subsystem Upgrades
+    const upgGrid = document.getElementById('upgradesGrid');
+    upgGrid.innerHTML = '';
+    for (const u of UPGRADES) {
+      const rank = save.upgrades[u.id] || 0;
+      const cost = Math.round(u.baseCost * Math.pow(1.45, rank));
+      const maxed = rank >= u.max;
+      const canBuy = !maxed && save.credits >= cost;
+
+      const el = document.createElement('div');
+      el.className = 'rounded-2xl bg-slate-900/85 border border-slate-700/80 p-3 flex flex-col justify-between';
+      el.innerHTML = `
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-hud font-bold text-xs text-amber-300">${u.name}</span>
+            <span class="font-hud text-[10px] text-cyan-300">LVL ${rank}/${u.max}</span>
+          </div>
+          <p class="text-[11px] text-slate-400">${u.desc}</p>
+        </div>
+        <button data-upg="${u.id}" ${maxed ? 'disabled' : ''} class="w-full mt-2 py-1.5 rounded-xl font-hud font-bold text-[11px] ${
+          maxed ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : (canBuy ? 'jarvis-btn text-white' : 'bg-slate-800 text-slate-500')
+        }">
+          ${maxed ? 'MAXED OUT' : `UPGRADE • ${cost} CR`}
+        </button>
+      `;
+      upgGrid.appendChild(el);
+    }
+
+    upgGrid.querySelectorAll('[data-upg]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const u = UPGRADES.find(item => item.id === btn.dataset.upg);
+        const rank = save.upgrades[u.id] || 0;
+        const cost = Math.round(u.baseCost * Math.pow(1.45, rank));
+        if (rank < u.max && save.credits >= cost) {
+          save.credits -= cost;
+          save.upgrades[u.id] = rank + 1;
+          const stats = getPlayerStats();
+          player.maxHp = stats.maxHp;
+          player.hp = Math.min(player.maxHp, player.hp + 35);
+          persistSave();
+          SoundEngine.play('code');
+          renderArmory();
+        }
+      });
+    });
+
+    // Render 4 Tactical Consumables
+    const consGrid = document.getElementById('consumablesGrid');
+    consGrid.innerHTML = '';
+    for (const c of CONSUMABLES) {
+      const canBuy = save.credits >= c.cost;
+      const el = document.createElement('div');
+      el.className = 'rounded-2xl bg-slate-900/85 border border-slate-700/80 p-3 flex flex-col justify-between';
+      el.innerHTML = `
+        <div>
+          <div class="font-hud font-bold text-xs text-emerald-300 mb-1">${c.name}</div>
+          <p class="text-[11px] text-slate-400">${c.desc}</p>
+        </div>
+        <button data-cons="${c.id}" class="w-full mt-2 py-1.5 rounded-xl font-hud font-bold text-[11px] ${
+          canBuy ? 'stark-gold-btn text-white' : 'bg-slate-800 text-slate-500'
+        }">DEPLOY • ${c.cost} CR</button>
+      `;
+      consGrid.appendChild(el);
+    }
+
+    consGrid.querySelectorAll('[data-cons]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const c = CONSUMABLES.find(item => item.id === btn.dataset.cons);
+        if (save.credits < c.cost) return;
+        save.credits -= c.cost;
+        if (c.id === 'repair') player.hp = player.maxHp;
+        else if (c.id === 'overcharge') player.unibeam = 100;
+        else if (c.id === 'shield') player.shieldTimer = 15;
+        else if (c.id === 'orbital') launchMissileSalvo(18);
+        persistSave();
+        SoundEngine.play('code');
+        renderArmory();
+      });
+    });
+  }
+
+  function renderHologramPreview(time) {
+    if (elArmory.classList.contains('is-hidden')) return;
+    const pw = previewCanvas.width;
+    const ph = previewCanvas.height;
+    previewCtx.clearRect(0, 0, pw, ph);
+
+    // Holographic Pedestal Rings
+    previewCtx.save();
+    previewCtx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+    previewCtx.lineWidth = 2;
+    previewCtx.beginPath();
+    previewCtx.ellipse(pw * 0.5, ph * 0.82, 56, 14, 0, 0, Math.PI * 2);
+    previewCtx.stroke();
+
+    // Scanline Beam
+    const scanY = ph * 0.15 + ((Math.sin(time * 2.2) + 1) * 0.5) * ph * 0.65;
+    previewCtx.strokeStyle = 'rgba(34, 211, 238, 0.45)';
+    previewCtx.beginPath();
+    previewCtx.moveTo(30, scanY);
+    previewCtx.lineTo(pw - 30, scanY);
+    previewCtx.stroke();
+    previewCtx.restore();
+
+    const pSuit = getSuit(state.previewSuitId);
+    const bob = Math.sin(time * 3) * 5;
+    drawStickmanSuit(previewCtx, pw * 0.5, ph * 0.48 + bob, 2.2, pSuit, time, Math.sin(time * 1.5) * 0.08);
+  }
+
+  /* =========================================================================
+     13. J.A.R.V.I.S. OVERRIDE CODE TERMINAL (30+ SECRET CIPHERS)
+     ========================================================================= */
+  function openCodesModal() {
+    state.paused = true;
+    elCodes.classList.remove('is-hidden');
+    const inp = document.getElementById('codeInput');
+    inp.value = '';
+    setTimeout(() => inp.focus(), 60);
+  }
+
+  function closeCodesModal() {
+    elCodes.classList.add('is-hidden');
+    if (state.screen === 'playing') state.paused = false;
+  }
+
+  function unlockAndEquipSuit(suitId) {
+    if (!save.unlockedSuits.includes(suitId)) save.unlockedSuits.push(suitId);
+    save.equippedSuit = suitId;
+    const stats = getPlayerStats();
+    player.maxHp = stats.maxHp;
+    player.hp = stats.maxHp;
+    persistSave();
+  }
+
+  function processOverrideCode(rawInput) {
+    const code = (rawInput || '').trim().toUpperCase();
+    const fb = document.getElementById('codeFeedback');
+    if (!code) {
+      fb.textContent = '⚠️ ENTER A VALID OVERRIDE CIPHER.';
+      fb.style.color = '#fbbf24';
+      return;
+    }
+
+    // Doom-Exclusive Reality Wave Warp Commands: WARP <num> or WAVE <num>
+    const warpMatch = code.match(/^(?:WARP|WAVE)\s*(\d+)$/);
+    if (warpMatch) {
+      if (getSuit(save.equippedSuit).id !== 'doom') {
+        fb.textContent = '🔒 REALITY WAVE WARP REQUIRES GOD EMPEROR DR. DOOM EQUIPPED.';
+        fb.style.color = '#f87171';
+        return;
+      }
+      const targetWave = parseInt(warpMatch[1], 10);
+      closeCodesModal();
+      if (state.screen !== 'playing') startNewMission(true);
+      warpToWave(targetWave);
+      return;
+    }
+
+    let msg = '';
+    if (code === '1212129') {
+      save.autoShootUnlocked = true;
+      state.autoShoot = true;
+      msg = '✅ CIPHER ACCEPTED: J.A.R.V.I.S. PREDICTIVE AUTO-SHOOT UNLOCKED & ENGAGED!';
+    } else if (code === '9012') {
+      const lockedPool = BASE_SUIT_IDS.filter(id => !save.unlockedSuits.includes(id));
+      if (lockedPool.length > 0) {
+        const pick = lockedPool[Math.floor(Math.random() * lockedPool.length)];
+        unlockAndEquipSuit(pick);
+        msg = `🎲 RANDOM ARMOR DROP: ${getSuit(pick).name} UNLOCKED & EQUIPPED!`;
+      } else {
+        save.credits += 2500;
+        msg = '🪙 ALL 34 BASE ARMORS OWNED! +2,500 STARK CREDITS AWARDED!';
+      }
+    } else if (code === 'LATVERIA50' || code === 'GODEMPEROR' || code === 'DOOM666') {
+      unlockAndEquipSuit('doom');
+      msg = '👑 OMEGA OVERRIDE: GOD EMPEROR DR. DOOM UNLOCKED (1,000,000+ HP & WAVE WARP)!';
+    } else if (code === 'STARK3000' || code === 'LOVE3000') {
+      save.credits += 3000;
+      msg = '🪙 STARK VAULT OVERRIDE: +3,000 CREDITS DEPOSITED!';
+    } else if (code === 'MILLIONAIRE' || code === 'BILLIONAIRE') {
+      save.credits += 25000;
+      msg = '💎 GENIUS BILLIONAIRE PHILANTHROPIST: +25,000 CREDITS!';
+    } else if (code === 'JARVISMAX' || code === 'OVERCHARGE') {
+      for (const u of UPGRADES) save.upgrades[u.id] = u.max;
+      const stats = getPlayerStats();
+      player.maxHp = stats.maxHp;
+      player.hp = stats.maxHp;
+      msg = '⚡ ALL 6 STARK SUBSYSTEMS MAXED TO LEVEL 6!';
+    } else if (code === 'GODMODE' || code === 'UNIBEAM') {
+      player.hp = player.maxHp;
+      player.unibeam = 100;
+      player.shieldTimer = 25;
+      msg = '🛡️ AEGIS SHIELD + 100% CHEST UNIBEAM + FULL HULL RESTORED!';
+    } else if (code === 'MULTIVERSE' || code === 'HOUSEPARTY') {
+      for (const id of BASE_SUIT_IDS) {
+        if (!save.unlockedSuits.includes(id)) save.unlockedSuits.push(id);
+      }
+      msg = '🌌 HOUSE PARTY PROTOCOL: ALL 34 BASE SUITS UNLOCKED IN HALL OF ARMOR!';
+    } else if (code === 'IAMIRONMAN') {
+      unlockAndEquipSuit('mk85');
+      player.unibeam = 100;
+      msg = '🫰 MARK LXXXV INFINITY PRIME UNLOCKED & CHARGED!';
+    } else if (code === 'ODINSON') {
+      unlockAndEquipSuit('ironhammer');
+      msg = '⚡ IRON HAMMER (STARK ODINSON) UNLOCKED & EQUIPPED!';
+    } else if (code === 'DOOMSDAY') {
+      unlockAndEquipSuit('infamous');
+      msg = '🟢 INFAMOUS IRON MAN (VICTOR VON DOOM) UNLOCKED & EQUIPPED!';
+    } else if (code === 'EXTREMIS') {
+      unlockAndEquipSuit('mk42');
+      msg = '🔥 MARK XLII PRODIGAL SON (EXTREMIS) UNLOCKED & EQUIPPED!';
+    } else if (code === 'HULKBUSTER') {
+      unlockAndEquipSuit('mk44');
+      msg = '🦾 MARK XLIV HULKBUSTER SIEGE ARMOR UNLOCKED & EQUIPPED!';
+    } else if (code === 'BLEEDINGEDGE') {
+      unlockAndEquipSuit('mk50');
+      msg = '🩸 MARK L BLEEDING EDGE NANOTECH UNLOCKED & EQUIPPED!';
+    } else if (code === 'RESCUE') {
+      unlockAndEquipSuit('mk49');
+      msg = '💙 MARK XLIX RESCUE ARMOR UNLOCKED & EQUIPPED!';
+    } else if (code === 'WARMACHINE') {
+      unlockAndEquipSuit('warmachine');
+      msg = '🔫 WAR MACHINE (JIM RHODES) UNLOCKED & EQUIPPED!';
+    } else if (code === 'IRONHEART') {
+      unlockAndEquipSuit('ironheart');
+      msg = '💖 IRONHEART (RIRI WILLIAMS) UNLOCKED & EQUIPPED!';
+    } else if (code === 'SYMBIOTE') {
+      unlockAndEquipSuit('superior');
+      msg = '🤍 SUPERIOR IRON MAN (ENDO-SYM) UNLOCKED & EQUIPPED!';
+    } else if (code === 'SORCERER') {
+      unlockAndEquipSuit('sorcerer');
+      msg = '🔮 SORCERER SUPREME TONY STARK UNLOCKED & EQUIPPED!';
+    } else if (code === 'ZOMBIE2149') {
+      unlockAndEquipSuit('zombie');
+      msg = '🧟 ZOMBIE IRON MAN (EARTH-2149) UNLOCKED & EQUIPPED!';
+    } else if (code === 'STARKILLER' || code === 'OMEGA99') {
+      unlockAndEquipSuit('im2099');
+      save.credits += 5000;
+      msg = '🚀 IRON MAN 2099 + 5,000 CR UNLOCKED!';
+    } else if (code === 'AVENGERS') {
+      save.credits += 5000;
+      player.unibeam = 100;
+      player.shieldTimer = 20;
+      msg = '🅰️ AVENGERS ASSEMBLE: +5,000 CR, FULL UNIBEAM & AEGIS SHIELD!';
+    } else {
+      fb.textContent = '❌ INVALID CIPHER — ACCESS DENIED BY J.A.R.V.I.S.';
+      fb.style.color = '#f87171';
+      return;
+    }
+
+    persistSave();
+    SoundEngine.play('code');
+    fb.textContent = msg;
+    fb.style.color = '#34d399';
+    showBannerToast(msg, '#34d399');
+  }
+
+  /* =========================================================================
+     14. EVENT LISTENERS (DESKTOP, KEYBOARD, & MOBILE DUAL-THUMB TOUCH)
+     ========================================================================= */
+  document.getElementById('launchBtn').addEventListener('click', () => startNewMission(true));
+  document.getElementById('redeployBtn').addEventListener('click', () => startNewMission(true));
+  document.getElementById('startArmoryBtn').addEventListener('click', openArmory);
+  document.getElementById('hudArmoryBtn').addEventListener('click', openArmory);
+  document.getElementById('mobArmoryBtn').addEventListener('click', openArmory);
+  document.getElementById('endArmoryBtn').addEventListener('click', () => {
+    elEnd.classList.add('is-hidden');
+    openArmory();
+  });
+  document.getElementById('closeArmoryBtn').addEventListener('click', closeArmory);
+
+  document.getElementById('startCodesBtn').addEventListener('click', openCodesModal);
+  document.getElementById('hudCodesBtn').addEventListener('click', openCodesModal);
+  document.getElementById('mobCodesBtn').addEventListener('click', openCodesModal);
+  document.getElementById('closeCodesBtn').addEventListener('click', closeCodesModal);
+  document.getElementById('submitCodeBtn').addEventListener('click', () => {
+    processOverrideCode(document.getElementById('codeInput').value);
+  });
+  document.getElementById('codeInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') processOverrideCode(e.target.value);
+  });
+
+  // Armory Category Filter Buttons
+  document.querySelectorAll('.suit-cat-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.selectedCategory = btn.dataset.cat;
+      document.querySelectorAll('.suit-cat-btn').forEach(b => {
+        b.className = b === btn
+          ? 'suit-cat-btn px-3 py-1.5 rounded-xl font-hud font-bold text-xs bg-cyan-500 text-slate-950 cursor-pointer'
+          : 'suit-cat-btn px-3 py-1.5 rounded-xl font-hud font-bold text-xs bg-slate-800 text-slate-200 hover:bg-slate-700 cursor-pointer';
+      });
+      renderArmory();
+    });
+  });
+
+  // Mobile UI Mode Toggle
+  function cycleMobileUi() {
+    const order = ['auto', 'on', 'off'];
+    state.mobileOverride = order[(order.indexOf(state.mobileOverride) + 1) % order.length];
+    updateMobileVisibility();
+  }
+  document.getElementById('startMobileToggleBtn').addEventListener('click', cycleMobileUi);
+  document.getElementById('hudMobileBtn').addEventListener('click', cycleMobileUi);
+
+  // Sound Toggle
+  document.getElementById('hudSoundBtn').addEventListener('click', (e) => {
+    SoundEngine.enabled = !SoundEngine.enabled;
+    e.target.textContent = SoundEngine.enabled ? '🔊 SFX' : '🔇 MUTE';
+  });
+
+  // Auto-Shoot & Targeting Mode Toggles
+  function toggleAutoShoot() {
+    if (!save.autoShootUnlocked) {
+      showBannerToast('🔒 J.A.R.V.I.S. AUTO-SHOOT LOCKED — ENTER CODE 1212129 IN [CODES]', '#f87171');
+      return;
+    }
+    state.autoShoot = !state.autoShoot;
+  }
+  function cycleTargetingMode() {
+    const modes = ['SMART', 'BOSS-WEAKPT', 'NEAREST'];
+    state.autoMode = modes[(modes.indexOf(state.autoMode) + 1) % modes.length];
+  }
+  document.getElementById('hudAutoBtn').addEventListener('click', toggleAutoShoot);
+  document.getElementById('mobAutoBtn').addEventListener('click', toggleAutoShoot);
+  document.getElementById('hudModeBtn').addEventListener('click', cycleTargetingMode);
+
+  // Desktop Dock & Mobile Action Pads
+  document.getElementById('dockDashBtn').addEventListener('click', triggerDash);
+  document.getElementById('dockEmpBtn').addEventListener('click', triggerEmp);
+  document.getElementById('dockMissileBtn').addEventListener('click', () => launchMissileSalvo());
+  document.getElementById('dockBeamBtn').addEventListener('click', triggerUnibeam);
+
+  document.getElementById('mobDashBtn').addEventListener('click', triggerDash);
+  document.getElementById('mobEmpBtn').addEventListener('click', triggerEmp);
+  document.getElementById('mobMissileBtn').addEventListener('click', () => launchMissileSalvo());
+  document.getElementById('mobBeamBtn').addEventListener('click', triggerUnibeam);
+
+  // Dr. Doom Reality Wave Warp Buttons
+  document.getElementById('doomNextWaveBtn').addEventListener('click', () => warpToWave(state.wave + 1));
+  document.getElementById('doomSkip5Btn').addEventListener('click', () => warpToWave(state.wave + 5));
+  document.getElementById('doomJumpWaveBtn').addEventListener('click', () => {
+    openCodesModal();
+    document.getElementById('codeInput').value = 'WARP ';
+  });
+
+  // Mobile Hold-to-Fire Trigger
+  const mobFireBtn = document.getElementById('mobFireBtn');
+  mobFireBtn.addEventListener('touchstart', (e) => { e.preventDefault(); SoundEngine.init(); mobileFireHeld = true; });
+  mobFireBtn.addEventListener('touchend', (e) => { e.preventDefault(); mobileFireHeld = false; });
+  mobFireBtn.addEventListener('mousedown', () => { SoundEngine.init(); mobileFireHeld = true; });
+  window.addEventListener('mouseup', () => { mouseDown = false; mobileFireHeld = false; });
+
+  // Mobile Virtual Analog Joystick
+  const joyZone = document.getElementById('joy-zone');
+  const joyKnob = document.getElementById('joy-knob');
+  let joyTouchId = null;
+
+  function updateJoy(clientX, clientY) {
+    const rect = joyZone.getBoundingClientRect();
+    const cx = rect.left + rect.width * 0.5;
+    const cy = rect.top + rect.height * 0.5;
+    const maxR = rect.width * 0.36;
+    let dx = clientX - cx;
+    let dy = clientY - cy;
+    const dist = Math.hypot(dx, dy);
+    if (dist > maxR) {
+      dx = (dx / dist) * maxR;
+      dy = (dy / dist) * maxR;
+    }
+    joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+    joyVec.x = dx / maxR;
+    joyVec.y = dy / maxR;
+  }
+
+  joyZone.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    SoundEngine.init();
+    const t = e.changedTouches[0];
+    joyTouchId = t.identifier;
+    updateJoy(t.clientX, t.clientY);
+  }, { passive: false });
+
+  joyZone.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier === joyTouchId) updateJoy(t.clientX, t.clientY);
+    }
+  }, { passive: false });
+
+  function resetJoy(e) {
+    for (const t of e.changedTouches) {
+      if (t.identifier === joyTouchId) {
+        joyTouchId = null;
+        joyVec.x = 0;
+        joyVec.y = 0;
+        joyKnob.style.transform = 'translate(0px, 0px)';
+      }
+    }
+  }
+  joyZone.addEventListener('touchend', resetJoy);
+  joyZone.addEventListener('touchcancel', resetJoy);
+
+  // Canvas Mouse & Touch Aim + Paint-to-Lock
+  canvas.addEventListener('mousemove', (e) => {
+    player.aimX = e.clientX;
+    player.aimY = e.clientY;
+    if (state.screen === 'playing' && !state.paused) paintMissileLocks(e.clientX, e.clientY);
+  });
+  canvas.addEventListener('mousedown', (e) => {
+    if (e.button === 0) {
+      SoundEngine.init();
+      mouseDown = true;
+      player.aimX = e.clientX;
+      player.aimY = e.clientY;
+    }
+  });
+  canvas.addEventListener('touchstart', (e) => {
+    if (state.screen !== 'playing' || state.paused) return;
+    SoundEngine.init();
+    const t = e.changedTouches[0];
+    player.aimX = t.clientX;
+    player.aimY = t.clientY;
+    paintMissileLocks(t.clientX, t.clientY);
+  }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => {
+    if (state.screen !== 'playing' || state.paused) return;
+    const t = e.changedTouches[0];
+    player.aimX = t.clientX;
+    player.aimY = t.clientY;
+    paintMissileLocks(t.clientX, t.clientY);
+  }, { passive: true });
+
+  // Keyboard Shortcuts
+  window.addEventListener('keydown', (e) => {
+    keys[e.code] = true;
+    if (document.activeElement === document.getElementById('codeInput')) return;
+
+    if (e.code === 'Escape') {
+      if (!elArmory.classList.contains('is-hidden')) closeArmory();
+      else if (!elCodes.classList.contains('is-hidden')) closeCodesModal();
+    } else if (e.code === 'KeyB') {
+      if (elArmory.classList.contains('is-hidden')) openArmory();
+      else closeArmory();
+    } else if (e.code === 'KeyK') {
+      if (elCodes.classList.contains('is-hidden')) openCodesModal();
+      else closeCodesModal();
+    } else if (state.screen === 'playing' && !state.paused) {
+      if (e.code === 'KeyT') toggleAutoShoot();
+      else if (e.code === 'KeyY') cycleTargetingMode();
+      else if (e.code === 'KeyR') launchMissileSalvo();
+      else if (e.code === 'Space') { e.preventDefault(); triggerUnibeam(); }
+      else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') triggerDash();
+      else if (e.code === 'KeyE') triggerEmp();
+      else if (getSuit(save.equippedSuit).id === 'doom') {
+        if (e.code === 'KeyN') warpToWave(state.wave + 1);
+        else if (e.code === 'KeyM') warpToWave(state.wave + 5);
+        else if (e.code === 'KeyG') {
+          openCodesModal();
+          document.getElementById('codeInput').value = 'WARP ';
+        }
+      }
+    }
+  });
+  window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+  /* =========================================================================
+     15. RESILIENT TRY/CATCH GAME LOOP & BOOTSTRAP
+     ========================================================================= */
+  let lastTimestamp = 0;
+
+  function frameLoop(now) {
+    try {
+      const dt = Math.min(0.05, Math.max(0.001, (now - lastTimestamp) / 1000 || 0.016));
+      lastTimestamp = now;
+      const time = now * 0.001;
+
+      drawBackground(dt, time);
+
+      if (state.screen === 'playing') {
+        updateSimulation(dt, time);
+        renderCombat(time);
+        updateHudDom();
+      } else if (state.screen === 'start') {
+        // Idle flying hero showcase on Start Screen
+        const suit = getSuit(save.equippedSuit);
+        drawStickmanSuit(ctx, W * 0.5, H * 0.22 + Math.sin(time * 2.5) * 8, 1.25, suit, time, 0.12);
+      }
+
+      renderHologramPreview(time);
+    } catch (err) {
+      console.error('J.A.R.V.I.S. Frame Recovery:', err);
+    }
+    requestAnimationFrame(frameLoop);
+  }
+
+  window.onload = () => {
+    unlockDoomIfEligible();
+    startLoader();
+    requestAnimationFrame(frameLoop);
+  };
+})();
+</script>
+</body>
+</html>

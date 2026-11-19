@@ -1,0 +1,2561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>THE STATIC IN ROOM 4</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js r128 with Automatic Fallback CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        if (typeof THREE === 'undefined') {
+            document.write('<script src="https://unpkg.com/three@0.128.0/build/three.min.js"><\/script>');
+        }
+    </script>
+    <!-- Atmospheric Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Special+Elite&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #050507;
+            color: #e4e4e7;
+            font-family: 'Space Mono', monospace;
+            overflow: hidden;
+        }
+
+        .font-note {
+            font-family: 'Special Elite', cursive;
+        }
+
+        #webgl-container {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            cursor: crosshair;
+        }
+
+        /* Cinematic Post-Processing Overlays */
+        .post-vignette {
+            pointer-events: none;
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            background: radial-gradient(circle at center, transparent 48%, rgba(0, 0, 0, 0.86) 100%);
+            transition: opacity 0.3s ease;
+        }
+
+        #vein-overlay {
+            pointer-events: none;
+            position: fixed;
+            inset: 0;
+            z-index: 11;
+            opacity: 0;
+            background:
+                radial-gradient(circle at center, transparent 45%, rgba(65, 6, 12, 0.65) 90%, rgba(15, 0, 3, 0.92) 100%);
+            mix-blend-mode: multiply;
+            transition: opacity 0.4s ease;
+        }
+
+        #scare-flash {
+            pointer-events: none;
+            position: fixed;
+            inset: 0;
+            z-index: 35;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle, rgba(25, 0, 4, 0.88) 0%, #000 88%);
+        }
+
+        .post-scanlines {
+            pointer-events: none;
+            position: fixed;
+            inset: 0;
+            z-index: 11;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.16) 50%);
+            background-size: 100% 3px;
+            opacity: 0.35;
+        }
+
+        @keyframes grain-shift {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(-2%, 2%); }
+            50% { transform: translate(2%, -1%); }
+            75% { transform: translate(-1%, -2%); }
+        }
+
+        .post-grain {
+            pointer-events: none;
+            position: fixed;
+            inset: -10%;
+            width: 120%;
+            height: 120%;
+            z-index: 12;
+            opacity: 0.035;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            animation: grain-shift 0.35s steps(2) infinite;
+        }
+
+        @keyframes sanity-warp {
+            0% { filter: hue-rotate(0deg) contrast(100%); }
+            33% { filter: hue-rotate(30deg) contrast(130%) saturate(140%); }
+            66% { filter: hue-rotate(-25deg) contrast(120%); }
+            100% { filter: hue-rotate(0deg) contrast(100%); }
+        }
+
+        .sanity-distort {
+            animation: sanity-warp 0.22s infinite;
+        }
+
+        /* Center Crosshair Reticle */
+        #reticle {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            pointer-events: none;
+            width: 7px;
+            height: 7px;
+            border-radius: 9999px;
+            background-color: rgba(244, 244, 245, 0.72);
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.95);
+            transition: all 0.14s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        #reticle.interactive {
+            width: 24px;
+            height: 24px;
+            background-color: rgba(251, 191, 36, 0.12);
+            border: 2px solid rgba(251, 191, 36, 0.95);
+            box-shadow: 0 0 16px rgba(251, 191, 36, 0.55);
+        }
+
+        .horror-btn {
+            background: linear-gradient(180deg, rgba(32, 32, 38, 0.94) 0%, rgba(14, 14, 18, 0.97) 100%);
+            border: 1px solid rgba(161, 161, 170, 0.38);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            transition: all 0.16s ease;
+        }
+        .horror-btn:hover {
+            border-color: rgba(244, 244, 245, 0.82);
+            box-shadow: 0 0 22px rgba(255, 255, 255, 0.16);
+            transform: translateY(-1px);
+        }
+        .horror-btn:active {
+            transform: translateY(1px);
+        }
+
+        input[type=range] {
+            accent-color: #e4e4e7;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Visible Error Banner (Only shows if WebGL or Three.js fails) -->
+    <div id="error-banner" class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-[100] max-w-lg w-[92%] bg-red-950/95 border border-red-500 text-red-100 p-4 rounded-xl shadow-2xl text-xs">
+        <div class="font-bold uppercase tracking-wider text-red-300 mb-1">Initialization Warning</div>
+        <div id="error-banner-text"></div>
+    </div>
+
+    <!-- 3D WebGL Viewport -->
+    <div id="webgl-container"></div>
+
+    <!-- Post-Processing Overlays -->
+    <div id="post-vignette" class="post-vignette"></div>
+    <div id="vein-overlay"></div>
+    <div class="post-scanlines"></div>
+    <div class="post-grain"></div>
+
+    <!-- Close-Up Entity Lunge / Jump-Scare Flash -->
+    <div id="scare-flash">
+        <svg viewBox="0 0 400 400" class="w-full h-full max-w-2xl animate-pulse">
+            <defs>
+                <filter id="static-warp">
+                    <feTurbulence type="fractalNoise" baseFrequency="0.15" numOctaves="3" result="noise"/>
+                    <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" />
+                </filter>
+            </defs>
+            <g filter="url(#static-warp)">
+                <ellipse cx="200" cy="195" rx="92" ry="145" fill="#070709" stroke="#3f3f46" stroke-width="2"/>
+                <path d="M125,165 Q200,130 275,165 Q260,295 200,335 Q140,295 125,165 Z" fill="#030304"/>
+                <ellipse cx="162" cy="175" rx="24" ry="18" fill="#000"/>
+                <ellipse cx="238" cy="175" rx="24" ry="18" fill="#000"/>
+                <circle cx="162" cy="175" r="4" fill="#fef08a"/>
+                <circle cx="238" cy="175" r="4" fill="#fef08a"/>
+                <ellipse cx="200" cy="265" rx="34" ry="56" fill="#000" stroke="#52525b" stroke-width="1.5"/>
+            </g>
+        </svg>
+    </div>
+
+    <!-- Center Crosshair Reticle -->
+    <div id="reticle" class="hidden"></div>
+
+    <!-- Interaction Prompt Below Reticle -->
+    <div id="interact-prompt" class="hidden fixed top-[54%] left-1/2 -translate-x-1/2 z-20 pointer-events-none text-center">
+        <span id="interact-prompt-text" class="inline-block bg-zinc-950/90 border border-amber-400/60 px-3.5 py-1.5 rounded-lg text-[11px] tracking-[0.16em] text-amber-200 uppercase shadow-xl backdrop-blur-sm">
+            [E] INSPECT
+        </span>
+    </div>
+
+    <!-- Minimalist Diegetic HUD -->
+    <div id="hud" class="hidden fixed inset-0 z-20 pointer-events-none p-4 sm:p-6 flex flex-col justify-between">
+        <!-- Top Row -->
+        <div class="flex items-start justify-between gap-4">
+            <div class="bg-zinc-950/80 border border-zinc-800/80 backdrop-blur-md px-4 py-2.5 rounded-xl shadow-lg">
+                <div class="text-[10px] tracking-[0.25em] text-zinc-500 uppercase">APARTMENT 4B</div>
+                <div id="hud-room" class="text-xs sm:text-sm font-bold tracking-widest text-zinc-100 mt-0.5">BEDROOM</div>
+                <div class="mt-2 flex items-center gap-2">
+                    <span class="text-[10px] tracking-wider text-zinc-400 uppercase">LUCIDITY</span>
+                    <div class="w-24 h-1.5 bg-zinc-900 rounded-full overflow-hidden">
+                        <div id="hud-sanity-bar" class="h-full bg-zinc-200 transition-all duration-300" style="width: 100%;"></div>
+                    </div>
+                    <span id="hud-sanity-val" class="text-[10px] text-zinc-300 font-bold">100%</span>
+                </div>
+            </div>
+
+            <!-- Top-Right Quick Controls & Inventory -->
+            <div class="flex flex-col items-end gap-2 pointer-events-auto">
+                <div class="flex items-center gap-2">
+                    <button id="btn-journal" class="horror-btn px-3 py-2 rounded-xl text-[11px] font-bold tracking-wider text-zinc-200 cursor-pointer">
+                        NOTES (<span id="hud-notes-count">0</span>/5)
+                    </button>
+                    <button id="btn-mute" title="Toggle Audio (M)" class="horror-btn px-3 py-2 rounded-xl text-[11px] font-bold tracking-wider text-zinc-200 cursor-pointer">
+                        <span id="hud-mute-text">AUDIO: ON</span>
+                    </button>
+                    <button id="btn-pause" title="Pause & Settings (P)" class="horror-btn px-3 py-2 rounded-xl text-[11px] font-bold tracking-wider text-zinc-200 cursor-pointer">
+                        MENU
+                    </button>
+                </div>
+
+                <!-- Collected Keys Pill -->
+                <div class="bg-zinc-950/80 border border-zinc-800/80 backdrop-blur-md px-3 py-1.5 rounded-xl text-[11px] text-zinc-400">
+                    <span class="text-zinc-500 uppercase text-[10px] mr-1.5">KEYS:</span>
+                    <span id="hud-keys" class="text-amber-300 font-bold">None</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Row: Flashlight Battery, Stamina & Subtitle -->
+        <div class="flex flex-col items-center gap-3">
+            <div id="subtitle-box" class="max-w-xl w-full text-center transition-opacity duration-300 opacity-0">
+                <p id="subtitle-text" class="inline-block bg-zinc-950/90 border border-zinc-700/80 px-4 py-2 rounded-xl text-xs sm:text-sm text-zinc-100 tracking-wide shadow-2xl"></p>
+            </div>
+
+            <div class="w-full flex flex-wrap items-end justify-between gap-2">
+                <div class="bg-zinc-950/80 border border-zinc-800/80 backdrop-blur-md px-3.5 py-2 rounded-xl flex items-center gap-4 text-[11px]">
+                    <div class="flex items-center gap-2">
+                        <span id="hud-light-dot" class="w-2.5 h-2.5 rounded-full bg-amber-300 shadow-[0_0_8px_#fcd34d]"></span>
+                        <span id="hud-light-label" class="text-zinc-300 tracking-wider">[F] BEAM</span>
+                        <span id="hud-battery-val" class="text-zinc-100 font-bold">100%</span>
+                    </div>
+                    <div class="h-3.5 w-[1px] bg-zinc-800"></div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-zinc-400 tracking-wider">BREATH</span>
+                        <div class="w-16 h-1.5 bg-zinc-900 rounded-full overflow-hidden">
+                            <div id="hud-stamina-bar" class="h-full bg-zinc-300 transition-all duration-150" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="pointer-hint" class="hidden sm:block text-[10px] tracking-wider text-zinc-400 bg-zinc-950/75 px-3 py-1.5 rounded-lg border border-zinc-800/70">
+                    [WASD] MOVE • [MOUSE / DRAG / Q & R] LOOK • [E] INSPECT • [F] FLASHLIGHT • [SHIFT] SPRINT
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Touch Joysticks -->
+    <div id="mobile-touch-ui" class="hidden fixed inset-0 z-20 pointer-events-none">
+        <div id="touch-move-zone" class="pointer-events-auto fixed bottom-6 left-6 w-28 h-28 rounded-full bg-zinc-900/50 border border-zinc-700/60 backdrop-blur-sm flex items-center justify-center">
+            <div id="touch-move-knob" class="w-10 h-10 rounded-full bg-zinc-300/50 border border-zinc-200/70"></div>
+        </div>
+        <div class="pointer-events-auto fixed bottom-6 right-6 flex flex-col gap-2.5">
+            <button id="touch-btn-light" class="horror-btn px-4 py-3 rounded-xl text-xs font-bold tracking-wider text-amber-200">LIGHT</button>
+            <button id="touch-btn-interact" class="horror-btn px-5 py-4 rounded-xl text-xs font-bold tracking-wider text-zinc-100">INSPECT</button>
+        </div>
+    </div>
+
+    <!-- Cinematic Title Screen -->
+    <div id="title-screen" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-[3px] flex flex-col items-center justify-center p-6 text-center">
+        <div class="max-w-xl w-full space-y-6 bg-zinc-950/75 border border-zinc-800/80 p-8 rounded-3xl shadow-2xl">
+            <div class="inline-block px-3.5 py-1 rounded-full border border-zinc-700/80 bg-zinc-900/90 text-[10px] tracking-[0.3em] text-zinc-400 uppercase">
+                First-Person 3D Psychological Horror
+            </div>
+            <h1 class="text-3xl sm:text-5xl font-bold tracking-[0.14em] text-zinc-100 drop-shadow-[0_0_25px_rgba(255,255,255,0.25)]">
+                THE STATIC IN ROOM 4
+            </h1>
+            <p class="text-xs sm:text-sm text-zinc-300 leading-relaxed max-w-md mx-auto">
+                The front door is chained from the outside. Something inside the living room television has been broadcasting since 1998. Search the five rooms, uncover the 4-digit code, and survive what watches you in the dark.
+            </p>
+
+            <div class="pt-2">
+                <button id="btn-enter-room" class="horror-btn px-9 py-4 rounded-2xl text-sm font-bold tracking-[0.26em] text-zinc-100 uppercase cursor-pointer">
+                    ENTER ROOM 4
+                </button>
+            </div>
+
+            <div class="text-[11px] text-zinc-400 tracking-wider pt-1 leading-relaxed">
+                [WASD] Move • [Mouse / Click-Drag / Q & R] Look • [E] Inspect<br>
+                [F] Flashlight • [Shift] Sprint • [C] Crouch • [M] Mute
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Overlay (Notes, Keypad, Pause Menu, Endings) -->
+    <div id="modal-overlay" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-zinc-950 border border-zinc-800 max-w-lg w-full rounded-2xl p-6 sm:p-8 shadow-[0_0_60px_rgba(0,0,0,0.98)]">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <span id="modal-tag" class="text-[10px] uppercase tracking-[0.25em] text-zinc-500 block mb-1">DOCUMENT</span>
+                    <h2 id="modal-title" class="text-lg sm:text-xl font-bold text-zinc-100 tracking-wide">Title</h2>
+                </div>
+                <button id="modal-close" class="text-zinc-400 hover:text-zinc-100 text-sm px-2.5 py-1 rounded-lg border border-zinc-800 hover:border-zinc-600 cursor-pointer">✕</button>
+            </div>
+            <div id="modal-body" class="text-sm text-zinc-300 leading-relaxed space-y-4 max-h-[60vh] overflow-y-auto pr-1"></div>
+            <div id="modal-footer" class="mt-6 flex flex-wrap justify-end gap-3"></div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * THE STATIC IN ROOM 4 — COMPLETE 3D FIRST-PERSON PSYCHOLOGICAL HORROR
+         * Fixed & Hardened:
+         * - Dual CDN Three.js loader + explicit WebGL renderer/camera setup + error boundary
+         * - Hybrid Pointer-Lock + Click-Drag + Q/R keyboard turning for sandboxed iframes
+         * - Balanced flashlight spotlight + close-range bounce light + atmospheric room practicals
+         * - Sliding AABB collision across all 5 rooms (Bedroom, Hallway, Bathroom, Living Room, Study)
+         * - Multi-phase "Tall Man in the Static" AI, mirror apparition, breaker blackout, and 4 endings
+         */
+
+        function showFatalError(msg) {
+            console.error(msg);
+            const banner = document.getElementById('error-banner');
+            const text = document.getElementById('error-banner-text');
+            if (banner && text) {
+                text.textContent = msg;
+                banner.classList.remove('hidden');
+            }
+        }
+
+        window.addEventListener('error', (e) => {
+            showFatalError(`Runtime error: ${e.message}`);
+        });
+
+        // ==========================================
+        // 1. PROCEDURAL PBR TEXTURE GENERATOR
+        // ==========================================
+        class ProceduralTextures {
+            static createCanvas(size = 512) {
+                const c = document.createElement('canvas');
+                c.width = size;
+                c.height = size;
+                return c;
+            }
+
+            static makeWoodFloor() {
+                const size = 512;
+                const diff = this.createCanvas(size);
+                const bump = this.createCanvas(size);
+                const dCtx = diff.getContext('2d');
+                const bCtx = bump.getContext('2d');
+
+                dCtx.fillStyle = '#332319';
+                dCtx.fillRect(0, 0, size, size);
+                bCtx.fillStyle = '#808080';
+                bCtx.fillRect(0, 0, size, size);
+
+                const planks = 8;
+                const plankW = size / planks;
+
+                for (let i = 0; i < planks; i++) {
+                    const x = i * plankW;
+                    const shade = 42 + Math.random() * 18;
+                    dCtx.fillStyle = `rgb(${shade + 16}, ${shade + 6}, ${shade - 4})`;
+                    dCtx.fillRect(x + 1, 0, plankW - 2, size);
+
+                    for (let g = 0; g < 85; g++) {
+                        const gx = x + Math.random() * plankW;
+                        const gy = Math.random() * size;
+                        const gh = 30 + Math.random() * 120;
+                        dCtx.fillStyle = Math.random() > 0.5 ? 'rgba(14,8,5,0.24)' : 'rgba(95,66,46,0.16)';
+                        dCtx.fillRect(gx, gy, 1.5, gh);
+                        bCtx.fillStyle = 'rgba(40,40,40,0.25)';
+                        bCtx.fillRect(gx, gy, 1.5, gh);
+                    }
+
+                    dCtx.fillStyle = '#120c08';
+                    dCtx.fillRect(x, 0, 2, size);
+                    bCtx.fillStyle = '#151515';
+                    bCtx.fillRect(x, 0, 3, size);
+                }
+
+                const map = new THREE.CanvasTexture(diff);
+                const bumpMap = new THREE.CanvasTexture(bump);
+                [map, bumpMap].forEach(t => {
+                    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+                    t.repeat.set(6, 6);
+                });
+                return { map, bumpMap };
+            }
+
+            static makeWallpaper() {
+                const size = 512;
+                const diff = this.createCanvas(size);
+                const bump = this.createCanvas(size);
+                const dCtx = diff.getContext('2d');
+                const bCtx = bump.getContext('2d');
+
+                dCtx.fillStyle = '#3d3b33';
+                dCtx.fillRect(0, 0, size, size);
+                bCtx.fillStyle = '#757575';
+                bCtx.fillRect(0, 0, size, size);
+
+                for (let x = 0; x < size; x += 32) {
+                    dCtx.fillStyle = 'rgba(24, 23, 18, 0.35)';
+                    dCtx.fillRect(x, 0, 8, size);
+                    dCtx.fillStyle = 'rgba(85, 82, 68, 0.18)';
+                    dCtx.fillRect(x + 14, 0, 3, size);
+                }
+
+                for (let s = 0; s < 32; s++) {
+                    const sx = Math.random() * size;
+                    const sy = Math.random() * size;
+                    const sr = 20 + Math.random() * 75;
+                    const grad = dCtx.createRadialGradient(sx, sy, 2, sx, sy, sr);
+                    grad.addColorStop(0, 'rgba(14, 13, 10, 0.42)');
+                    grad.addColorStop(1, 'rgba(14, 13, 10, 0)');
+                    dCtx.fillStyle = grad;
+                    dCtx.beginPath();
+                    dCtx.arc(sx, sy, sr, 0, Math.PI * 2);
+                    dCtx.fill();
+                }
+
+                const map = new THREE.CanvasTexture(diff);
+                const bumpMap = new THREE.CanvasTexture(bump);
+                [map, bumpMap].forEach(t => {
+                    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+                    t.repeat.set(3, 2);
+                });
+                return { map, bumpMap };
+            }
+
+            static makeBathroomTile() {
+                const size = 512;
+                const diff = this.createCanvas(size);
+                const bump = this.createCanvas(size);
+                const dCtx = diff.getContext('2d');
+                const bCtx = bump.getContext('2d');
+
+                dCtx.fillStyle = '#1e2427';
+                dCtx.fillRect(0, 0, size, size);
+                bCtx.fillStyle = '#202020';
+                bCtx.fillRect(0, 0, size, size);
+
+                const tiles = 8;
+                const step = size / tiles;
+                for (let y = 0; y < tiles; y++) {
+                    for (let x = 0; x < tiles; x++) {
+                        const v = 72 + Math.random() * 18;
+                        dCtx.fillStyle = `rgb(${v - 6}, ${v + 5}, ${v + 8})`;
+                        dCtx.fillRect(x * step + 3, y * step + 3, step - 6, step - 6);
+
+                        bCtx.fillStyle = '#c8c8c8';
+                        bCtx.fillRect(x * step + 3, y * step + 3, step - 6, step - 6);
+                    }
+                }
+
+                const map = new THREE.CanvasTexture(diff);
+                const bumpMap = new THREE.CanvasTexture(bump);
+                [map, bumpMap].forEach(t => {
+                    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+                    t.repeat.set(4, 3);
+                });
+                return { map, bumpMap };
+            }
+
+            static makeFlashlightCookie() {
+                const size = 256;
+                const c = this.createCanvas(size);
+                const ctx = c.getContext('2d');
+                const half = size / 2;
+
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, size, size);
+
+                const grad = ctx.createRadialGradient(half, half, 12, half, half, half);
+                grad.addColorStop(0, 'rgba(255, 253, 245, 1)');
+                grad.addColorStop(0.45, 'rgba(255, 248, 230, 0.92)');
+                grad.addColorStop(0.78, 'rgba(235, 230, 215, 0.45)');
+                grad.addColorStop(0.92, 'rgba(255, 250, 235, 0.2)');
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(half, half, half, 0, Math.PI * 2);
+                ctx.fill();
+
+                return new THREE.CanvasTexture(c);
+            }
+
+            static makeFoggedMirror(revealed = false) {
+                const c = this.createCanvas(512);
+                const ctx = c.getContext('2d');
+
+                ctx.fillStyle = '#64748b';
+                ctx.fillRect(0, 0, 512, 512);
+
+                for (let i = 0; i < 65; i++) {
+                    const x = Math.random() * 512;
+                    const y = Math.random() * 512;
+                    const r = 30 + Math.random() * 90;
+                    const g = ctx.createRadialGradient(x, y, 5, x, y, r);
+                    g.addColorStop(0, 'rgba(203, 213, 225, 0.28)');
+                    g.addColorStop(1, 'rgba(203, 213, 225, 0)');
+                    ctx.fillStyle = g;
+                    ctx.beginPath();
+                    ctx.arc(x, y, r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.font = 'bold 140px "Special Elite", monospace';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = revealed ? 'rgba(15, 23, 42, 0.92)' : 'rgba(51, 65, 85, 0.35)';
+                ctx.fillText('4 0', 256, 285);
+
+                if (revealed) {
+                    ctx.font = '24px "Special Elite", monospace';
+                    ctx.fillText('IT IS STANDING BEHIND YOU', 256, 358);
+                }
+
+                const tex = new THREE.CanvasTexture(c);
+                tex.needsUpdate = true;
+                return tex;
+            }
+
+            static makeScratchedDoor() {
+                const c = this.createCanvas(512);
+                const ctx = c.getContext('2d');
+
+                ctx.fillStyle = '#361b12';
+                ctx.fillRect(0, 0, 512, 512);
+
+                for (let i = 0; i < 60; i++) {
+                    ctx.fillStyle = 'rgba(15, 6, 4, 0.35)';
+                    ctx.fillRect(Math.random() * 512, 0, 3, 512);
+                }
+                const smear = ctx.createRadialGradient(256, 260, 10, 256, 260, 190);
+                smear.addColorStop(0, 'rgba(85, 10, 10, 0.55)');
+                smear.addColorStop(1, 'rgba(85, 10, 10, 0)');
+                ctx.fillStyle = smear;
+                ctx.fillRect(0, 0, 512, 512);
+
+                ctx.strokeStyle = '#d4d4d8';
+                ctx.lineWidth = 2.4;
+                for (let g = 0; g < 18; g++) {
+                    const sx = 90 + Math.random() * 330;
+                    const sy = 70 + Math.random() * 140;
+                    ctx.beginPath();
+                    ctx.moveTo(sx, sy);
+                    ctx.lineTo(sx + (Math.random() - 0.5) * 14, sy + 70 + Math.random() * 60);
+                    ctx.stroke();
+                }
+
+                ctx.font = 'bold 34px "Special Elite", monospace';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = 'rgba(228, 228, 231, 0.85)';
+                ctx.fillText("DON'T OPEN IT", 256, 255);
+                ctx.font = 'bold 26px "Special Elite", monospace';
+                ctx.fillStyle = 'rgba(220, 38, 38, 0.9)';
+                ctx.fillText("IT WEARS YOUR FACE", 256, 305);
+
+                return new THREE.CanvasTexture(c);
+            }
+        }
+
+        // ==========================================
+        // 2. SPATIAL PROCEDURAL HORROR AUDIO ENGINE
+        // ==========================================
+        class HorrorAudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.isMuted = false;
+                this.ready = false;
+                this.master = null;
+                this.staticGain = null;
+                this.droneGain = null;
+                this.tinnitusGain = null;
+                this.tinnitusOsc = null;
+                this.noiseBuf = null;
+                this.stepTimer = 0;
+                this.heartbeatTimer = 0;
+                this.dripTimer = 2.0;
+            }
+
+            init() {
+                if (this.ready) return;
+                try {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioCtx) return;
+                    this.ctx = new AudioCtx();
+
+                    this.master = this.ctx.createGain();
+                    this.master.gain.value = 0.78;
+                    this.master.connect(this.ctx.destination);
+
+                    // 1. Sub-bass Binaural Drone
+                    this.droneGain = this.ctx.createGain();
+                    this.droneGain.gain.value = 0.16;
+                    const lp = this.ctx.createBiquadFilter();
+                    lp.type = 'lowpass';
+                    lp.frequency.value = 125;
+
+                    const osc1 = this.ctx.createOscillator();
+                    osc1.type = 'sawtooth';
+                    osc1.frequency.value = 44;
+
+                    const osc2 = this.ctx.createOscillator();
+                    osc2.type = 'triangle';
+                    osc2.frequency.value = 46.8;
+
+                    osc1.connect(lp);
+                    osc2.connect(lp);
+                    lp.connect(this.droneGain);
+                    this.droneGain.connect(this.master);
+                    osc1.start();
+                    osc2.start();
+
+                    // 2. Shared Noise Buffer for TV Static, Whispers & Scrapes
+                    const bufLen = this.ctx.sampleRate * 2;
+                    this.noiseBuf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
+                    const data = this.noiseBuf.getChannelData(0);
+                    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+
+                    const staticSrc = this.ctx.createBufferSource();
+                    staticSrc.buffer = this.noiseBuf;
+                    staticSrc.loop = true;
+
+                    const bp = this.ctx.createBiquadFilter();
+                    bp.type = 'bandpass';
+                    bp.frequency.value = 2100;
+                    bp.Q.value = 0.9;
+
+                    this.staticGain = this.ctx.createGain();
+                    this.staticGain.gain.value = 0.01;
+
+                    staticSrc.connect(bp);
+                    bp.connect(this.staticGain);
+                    this.staticGain.connect(this.master);
+                    staticSrc.start();
+
+                    // 3. High-pitched Tinnitus Ringing
+                    this.tinnitusOsc = this.ctx.createOscillator();
+                    this.tinnitusOsc.type = 'sine';
+                    this.tinnitusOsc.frequency.value = 6650;
+                    this.tinnitusGain = this.ctx.createGain();
+                    this.tinnitusGain.gain.value = 0.0;
+                    this.tinnitusOsc.connect(this.tinnitusGain);
+                    this.tinnitusGain.connect(this.master);
+                    this.tinnitusOsc.start();
+
+                    this.ready = true;
+                } catch (err) {
+                    console.warn("Audio init error:", err);
+                }
+            }
+
+            toggleMute() {
+                this.isMuted = !this.isMuted;
+                if (this.master && this.ctx) {
+                    this.master.gain.setTargetAtTime(this.isMuted ? 0 : 0.78, this.ctx.currentTime, 0.05);
+                }
+                return this.isMuted;
+            }
+
+            update(dt, { sanity, tvDist, bathDist, isMoving, isSprinting, roomName }) {
+                if (!this.ready || this.isMuted || !this.ctx) return;
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+
+                const now = this.ctx.currentTime;
+                const insanity = (100 - sanity) / 100;
+
+                const tvFactor = Math.max(0, 1 - tvDist / 14);
+                const targetStatic = Math.min(0.32, 0.006 + tvFactor * 0.18 + insanity * 0.07);
+                this.staticGain.gain.setTargetAtTime(targetStatic, now, 0.12);
+
+                const targetTin = sanity < 40 ? ((40 - sanity) / 40) * 0.045 : 0;
+                this.tinnitusGain.gain.setTargetAtTime(targetTin, now, 0.2);
+
+                if (isMoving) {
+                    this.stepTimer -= dt;
+                    if (this.stepTimer <= 0) {
+                        this.playFootstep(roomName === 'BATHROOM');
+                        this.stepTimer = isSprinting ? 0.31 : 0.48;
+                    }
+                } else {
+                    this.stepTimer = 0.08;
+                }
+
+                if (bathDist < 10) {
+                    this.dripTimer -= dt;
+                    if (this.dripTimer <= 0) {
+                        this.playWaterDrip(Math.max(0.1, 1 - bathDist / 10));
+                        this.dripTimer = 2.4 + Math.random() * 1.5;
+                    }
+                }
+
+                if (sanity < 55) {
+                    const bpm = 70 + (55 - sanity) * 1.6;
+                    this.heartbeatTimer -= dt;
+                    if (this.heartbeatTimer <= 0) {
+                        this.playHeartbeat(insanity);
+                        this.heartbeatTimer = 60 / bpm;
+                    }
+                }
+            }
+
+            playFootstep(isTile) {
+                if (!this.ready || this.isMuted) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = isTile ? 'triangle' : 'sine';
+                osc.frequency.setValueAtTime(isTile ? 260 + Math.random() * 40 : 95 + Math.random() * 20, now);
+                osc.frequency.exponentialRampToValueAtTime(isTile ? 90 : 34, now + 0.08);
+                gain.gain.setValueAtTime(isTile ? 0.09 : 0.14, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+                osc.connect(gain);
+                gain.connect(this.master);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            }
+
+            playWaterDrip(volScale) {
+                if (!this.ready || this.isMuted) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(920, now);
+                osc.frequency.exponentialRampToValueAtTime(1650, now + 0.06);
+                gain.gain.setValueAtTime(0.08 * volScale, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+                osc.connect(gain);
+                gain.connect(this.master);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            }
+
+            playHeartbeat(intensity) {
+                if (!this.ready || this.isMuted) return;
+                const now = this.ctx.currentTime;
+                const vol = Math.min(0.45, 0.15 + intensity * 0.35);
+                [0, 0.16].forEach((offset, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(i === 0 ? 58 : 46, now + offset);
+                    osc.frequency.exponentialRampToValueAtTime(22, now + offset + 0.14);
+                    gain.gain.setValueAtTime(vol * (i === 0 ? 1 : 0.7), now + offset);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.15);
+                    osc.connect(gain);
+                    gain.connect(this.master);
+                    osc.start(now + offset);
+                    osc.stop(now + offset + 0.16);
+                });
+            }
+
+            playClick(pitch = 850) {
+                if (!this.ready || this.isMuted) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(pitch, now);
+                osc.frequency.exponentialRampToValueAtTime(210, now + 0.045);
+                gain.gain.setValueAtTime(0.16, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                osc.connect(gain);
+                gain.connect(this.master);
+                osc.start(now);
+                osc.stop(now + 0.055);
+            }
+
+            playDoorCreak() {
+                if (!this.ready || this.isMuted) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(135, now);
+                osc.frequency.linearRampToValueAtTime(220, now + 0.25);
+                osc.frequency.linearRampToValueAtTime(110, now + 0.65);
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 340;
+                filter.Q.value = 5;
+
+                gain.gain.setValueAtTime(0.001, now);
+                gain.gain.linearRampToValueAtTime(0.18, now + 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.68);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.master);
+                osc.start(now);
+                osc.stop(now + 0.7);
+            }
+
+            playPhantomKnock() {
+                if (!this.ready || this.isMuted) return;
+                const now = this.ctx.currentTime;
+                [0, 0.22, 0.44].forEach(offset => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(130, now + offset);
+                    osc.frequency.exponentialRampToValueAtTime(45, now + offset + 0.08);
+                    gain.gain.setValueAtTime(0.38, now + offset);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.09);
+                    osc.connect(gain);
+                    gain.connect(this.master);
+                    osc.start(now + offset);
+                    osc.stop(now + offset + 0.1);
+                });
+            }
+
+            playStinger() {
+                if (!this.ready || this.isMuted) return;
+                const now = this.ctx.currentTime;
+                [73.4, 77.8, 110, 155.5, 233.1, 466.2, 622.2].forEach((f, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const filter = this.ctx.createBiquadFilter();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = idx % 2 === 0 ? 'sawtooth' : 'square';
+                    osc.frequency.setValueAtTime(f * 1.06, now);
+                    osc.frequency.exponentialRampToValueAtTime(f * 0.78, now + 1.15);
+
+                    filter.type = 'bandpass';
+                    filter.frequency.setValueAtTime(1400, now);
+                    filter.frequency.exponentialRampToValueAtTime(280, now + 1.15);
+                    filter.Q.value = 3.2;
+
+                    gain.gain.setValueAtTime(0.14, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+                    osc.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(this.master);
+                    osc.start(now);
+                    osc.stop(now + 1.25);
+                });
+            }
+
+            playBehindWhisper() {
+                if (!this.ready || this.isMuted || !this.noiseBuf) return;
+                const now = this.ctx.currentTime;
+                const src = this.ctx.createBufferSource();
+                src.buffer = this.noiseBuf;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(520, now);
+                filter.frequency.linearRampToValueAtTime(880, now + 0.45);
+                filter.frequency.linearRampToValueAtTime(340, now + 1.35);
+                filter.Q.value = 4.5;
+
+                const panner = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : null;
+                if (panner) {
+                    panner.pan.setValueAtTime(Math.random() > 0.5 ? 0.85 : -0.85, now);
+                }
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.001, now);
+                gain.gain.linearRampToValueAtTime(0.32, now + 0.35);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 1.45);
+
+                src.connect(filter);
+                if (panner) {
+                    filter.connect(panner);
+                    panner.connect(gain);
+                } else {
+                    filter.connect(gain);
+                }
+                gain.connect(this.master);
+                src.start(now);
+                src.stop(now + 1.5);
+            }
+
+            playWallScrape() {
+                if (!this.ready || this.isMuted || !this.noiseBuf) return;
+                const now = this.ctx.currentTime;
+                const src = this.ctx.createBufferSource();
+                src.buffer = this.noiseBuf;
+
+                const bp = this.ctx.createBiquadFilter();
+                bp.type = 'bandpass';
+                bp.frequency.setValueAtTime(2400, now);
+                bp.frequency.linearRampToValueAtTime(3900, now + 0.35);
+                bp.frequency.linearRampToValueAtTime(1600, now + 0.85);
+                bp.Q.value = 12;
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.001, now);
+                gain.gain.linearRampToValueAtTime(0.22, now + 0.15);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+
+                src.connect(bp);
+                bp.connect(gain);
+                gain.connect(this.master);
+                src.start(now);
+                src.stop(now + 0.95);
+            }
+
+            playDoorSlam() {
+                if (!this.ready || this.isMuted) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(115, now);
+                osc.frequency.exponentialRampToValueAtTime(24, now + 0.38);
+
+                gain.gain.setValueAtTime(0.65, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+
+                osc.connect(gain);
+                gain.connect(this.master);
+                osc.start(now);
+                osc.stop(now + 0.45);
+
+                setTimeout(() => this.playClick(1250), 220);
+            }
+
+            playFlashlightWhack() {
+                if (!this.ready || this.isMuted) return;
+                const now = this.ctx.currentTime;
+                [0, 0.09].forEach((offset, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(i === 0 ? 320 : 680, now + offset);
+                    osc.frequency.exponentialRampToValueAtTime(95, now + offset + 0.06);
+                    gain.gain.setValueAtTime(0.28, now + offset);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.07);
+                    osc.connect(gain);
+                    gain.connect(this.master);
+                    osc.start(now + offset);
+                    osc.stop(now + offset + 0.08);
+                });
+            }
+        }
+
+        // ==========================================
+        // 3. NARRATIVE & MEMORY FRAGMENTS (5 TOTAL)
+        // ==========================================
+        const FRAGMENTS = {
+            frag_bedroom: {
+                id: 'frag_bedroom',
+                title: "Note I: Outpatient Intake Slip",
+                tag: "BEDROOM • NIGHTSTAND",
+                sane: "Dr. A. Thorne — Room 4B Observation.\n\nPatient exhibits severe dissociative episodes triggered by analog television snow. Keep the hallway breaker powered. Do NOT stare into the bathroom mirror after midnight. The deadbolt chain was installed from the outside for your own protection.",
+                mad: "YOU WROTE THIS IN YOUR OWN HANDWRITING.\n\nTHERE IS NO DR. THORNE. YOU CHAINED THE DOOR SO NOTHING INSIDE ROOM 4 COULD GET OUT. STOP LOOKING FOR THE KEYS."
+            },
+            frag_hallway: {
+                id: 'frag_hallway',
+                title: "Note II: Torn Eviction Notice",
+                tag: "HALLWAY • FLOORBOARD",
+                sane: "FINAL NOTICE — APARTMENT 4B.\n\nThe building was condemned following the 1998 broadcast tower surge. No tenants have resided on the 4th floor for twenty-eight years. Why is the television still drawing current?",
+                mad: "TWENTY-EIGHT YEARS SITTING IN THE ARMCHAIR. THE SKIN ON YOUR HANDS LOOKS LIKE STATIC NOW."
+            },
+            frag_bathroom: {
+                id: 'frag_bathroom',
+                title: "Note III: Medicine Cabinet Prescription",
+                tag: "BATHROOM • CABINET",
+                sane: "Chlorpromazine 100mg — Take two before sleep.\n\nScribbled on the back label:\n'Steam reveals the first half of the exit code on the vanity glass (40). The second half is tuned into the dead channel in the living room.'",
+                mad: "DON'T TAKE THE PILLS. THEY MAKE THE SHADOWS IN THE CORNERS STOP WHISPERING THE CODE."
+            },
+            frag_living: {
+                id: 'frag_living',
+                title: "Note IV: Broadcast Log #04",
+                tag: "LIVING ROOM • COFFEE TABLE",
+                sane: "Channel 04 Carrier Wave Analysis:\n\nAt 03:14 AM, the static resolves into a clean two-digit frame hold: [ 4 2 ]. Combine with the mirror condensation [ 4 0 ] -> Exit Keypad: 4042.",
+                mad: "4042. 4042. 4042. IT ALREADY KNOWS YOU KNOW THE NUMBERS."
+            },
+            frag_study: {
+                id: 'frag_study',
+                title: "Note V: Reel-to-Reel Tape #14",
+                tag: "STUDY • OAK DESK",
+                sane: "Voice Transcript (Your Voice):\n\n'If you're listening to this, you forgot again. You aren't a prisoner here—you are the anchor keeping the Channel 04 signal contained inside Room 4. If you unlock the front door, you take it into the world with you.'",
+                mad: "OPEN THE DOOR. LET THE STATIC BREATHE. THE WHOLE CITY IS WAITING TO TUNE IN."
+            }
+        };
+
+        // ==========================================
+        // 4. INITIALIZE ENGINE & GAME STATE
+        // ==========================================
+        if (typeof THREE === 'undefined') {
+            showFatalError("Three.js failed to load from CDN. Please check your internet connection and reload.");
+            throw new Error("THREE is undefined");
+        }
+
+        const audio = new HorrorAudioEngine();
+
+        const state = {
+            started: false,
+            paused: false,
+            gameOver: false,
+            sanity: 100,
+            battery: 100,
+            stamina: 100,
+            flashlightOn: true,
+            flashlightSabotaged: false,
+            sabotageTimer: 0,
+            breakerTripped: false,
+            breakerRestored: false,
+            mouseSensitivity: 0.0024,
+            collectedFragments: [],
+            keys: [],
+            flags: {
+                bathUnlocked: false,
+                studyUnlocked: false,
+                mirrorRevealed: false,
+                tvInspected: false,
+                hallwaySlamTriggered: false
+            },
+            player: {
+                pos: new THREE.Vector3(-5.2, 1.65, -4.2), // Starts in Bedroom facing doorway
+                yaw: -Math.PI * 0.45,
+                pitch: 0,
+                height: 1.65,
+                crouching: false,
+                bobTimer: 0
+            },
+            stalker: {
+                phase: 1,
+                active: false,
+                peekTimer: 9.0,
+                lungeCooldown: 0,
+                twitchTime: 0
+            },
+            input: {
+                keys: {},
+                touchMove: { x: 0, y: 0 },
+                isDraggingLook: false,
+                lastMouseX: 0,
+                lastMouseY: 0
+            },
+            subtitleTimeout: null,
+            phantomKnockTimer: 16,
+            whisperTimer: 24,
+            sabotageCooldown: 34
+        };
+
+        // WebGL Renderer & Camera Setup
+        const container = document.getElementById('webgl-container');
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.25;
+        container.appendChild(renderer.domElement);
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050508);
+        scene.fog = new THREE.FogExp2(0x050508, 0.075);
+
+        const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 45);
+        camera.rotation.order = 'YXZ';
+
+        // Balanced Ambient Fill Light so walls & silhouettes are never pitch-black
+        const ambientLight = new THREE.AmbientLight(0x282c38, 0.45);
+        scene.add(ambientLight);
+
+        // Generate Procedural PBR Materials
+        const woodTex = ProceduralTextures.makeWoodFloor();
+        const wallTex = ProceduralTextures.makeWallpaper();
+        const tileTex = ProceduralTextures.makeBathroomTile();
+        const cookieTex = ProceduralTextures.makeFlashlightCookie();
+
+        const matWoodFloor = new THREE.MeshStandardMaterial({
+            map: woodTex.map,
+            bumpMap: woodTex.bumpMap,
+            bumpScale: 0.02,
+            roughness: 0.65,
+            metalness: 0.05
+        });
+
+        const matWallpaper = new THREE.MeshStandardMaterial({
+            map: wallTex.map,
+            bumpMap: wallTex.bumpMap,
+            bumpScale: 0.03,
+            roughness: 0.82,
+            metalness: 0.02
+        });
+
+        const matTile = new THREE.MeshStandardMaterial({
+            map: tileTex.map,
+            bumpMap: tileTex.bumpMap,
+            bumpScale: 0.025,
+            roughness: 0.35,
+            metalness: 0.1
+        });
+
+        const matCeiling = new THREE.MeshStandardMaterial({
+            color: 0x222228,
+            roughness: 0.9
+        });
+
+        const matDarkWood = new THREE.MeshStandardMaterial({
+            color: 0x3b2619,
+            roughness: 0.55,
+            metalness: 0.08
+        });
+
+        const matBrass = new THREE.MeshStandardMaterial({
+            color: 0xd4af37,
+            roughness: 0.3,
+            metalness: 0.85,
+            emissive: 0x332405,
+            emissiveIntensity: 0.35
+        });
+
+        // ==========================================
+        // 5. BUILD 5-ROOM APARTMENT 4B ARCHITECTURE
+        // ==========================================
+        const colliders = [];
+        const interactables = [];
+        const doors = {};
+
+        function addBoxCollider(cx, cz, w, d) {
+            colliders.push({
+                minX: cx - w / 2,
+                maxX: cx + w / 2,
+                minZ: cz - d / 2,
+                maxZ: cz + d / 2
+            });
+        }
+
+        function createWall(x, y, z, w, h, d, mat = matWallpaper, solid = true) {
+            const geo = new THREE.BoxGeometry(w, h, d);
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(x, y, z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+            if (solid) addBoxCollider(x, z, w, d);
+            return mesh;
+        }
+
+        const WALL_H = 3.2;
+        const HALF_H = WALL_H / 2;
+
+        // Floors & Ceilings
+        const mainFloor = new THREE.Mesh(new THREE.PlaneGeometry(19, 15), matWoodFloor);
+        mainFloor.rotation.x = -Math.PI / 2;
+        mainFloor.receiveShadow = true;
+        scene.add(mainFloor);
+
+        const bathFloor = new THREE.Mesh(new THREE.PlaneGeometry(7.0, 6.5), matTile);
+        bathFloor.rotation.x = -Math.PI / 2;
+        bathFloor.position.set(-5.0, 0.005, 3.75);
+        bathFloor.receiveShadow = true;
+        scene.add(bathFloor);
+
+        const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(19, 15), matCeiling);
+        ceiling.rotation.x = Math.PI / 2;
+        ceiling.position.y = WALL_H;
+        scene.add(ceiling);
+
+        // Outer Perimeter Walls
+        createWall(0.5, HALF_H, -7.1, 19, WALL_H, 0.25);  // North Outer
+        createWall(0.0, HALF_H, 7.1, 18, WALL_H, 0.25);   // South Outer (Exit Door wall)
+        createWall(-8.6, HALF_H, 0, 0.25, WALL_H, 14.4);  // West Outer
+        createWall(9.6, HALF_H, -3.25, 0.25, WALL_H, 7.8);// East Outer North (Living Room)
+        createWall(8.6, HALF_H, 4.0, 0.25, WALL_H, 6.4);  // East Outer South (Study)
+
+        // Room Divider Walls
+        createWall(-5.0, HALF_H, -0.2, 7.2, WALL_H, 0.25); // Bedroom / Bathroom divider
+        createWall(5.1, HALF_H, 0.8, 7.2, WALL_H, 0.25);   // Living Room / Study divider
+
+        // West Hallway Wall (X = -1.5) with generous 1.6m doorways at Z=-3.5 (Bedroom) & Z=3.5 (Bathroom)
+        createWall(-1.5, HALF_H, -5.7, 0.22, WALL_H, 2.8);
+        createWall(-1.5, HALF_H, 0.0, 0.22, WALL_H, 5.4);
+        createWall(-1.5, HALF_H, 5.7, 0.22, WALL_H, 2.8);
+        createWall(-1.5, 2.75, -3.5, 0.22, 0.9, 1.6, matWallpaper, false);
+        createWall(-1.5, 2.75, 3.5, 0.22, 0.9, 1.6, matWallpaper, false);
+
+        // East Hallway Wall (X = 1.5) with open archway at Z=-3.5 (Living Room) & 1.6m doorway at Z=4.0 (Study)
+        createWall(1.5, HALF_H, -6.0, 0.22, WALL_H, 2.2);
+        createWall(1.5, HALF_H, 0.5, 0.22, WALL_H, 5.4);
+        createWall(1.5, HALF_H, 6.0, 0.22, WALL_H, 2.2);
+        createWall(1.5, 2.75, -3.5, 0.22, 0.9, 2.6, matWallpaper, false);
+        createWall(1.5, 2.75, 4.0, 0.22, 0.9, 1.6, matWallpaper, false);
+
+        // Hinged Doors Builder
+        function buildHingedDoor(id, x, z, rotY, isOpen = false, lockedMsg = null) {
+            const pivot = new THREE.Group();
+            pivot.position.set(x, 0, z);
+            pivot.rotation.y = rotY;
+            scene.add(pivot);
+
+            const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.25, 1.55), matDarkWood);
+            doorMesh.position.set(0, 1.125, 0.775);
+            doorMesh.castShadow = true;
+            doorMesh.receiveShadow = true;
+            pivot.add(doorMesh);
+
+            const knob = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 12), matBrass);
+            knob.position.set(0.06, 1.05, 1.38);
+            pivot.add(knob);
+
+            const doorObj = {
+                id,
+                pivot,
+                mesh: doorMesh,
+                open: isOpen,
+                targetAngle: isOpen ? rotY + Math.PI * 0.52 : rotY,
+                baseAngle: rotY,
+                lockedMsg
+            };
+            if (isOpen) pivot.rotation.y = doorObj.targetAngle;
+            doors[id] = doorObj;
+            return doorObj;
+        }
+
+        // Bedroom Door (Unlocked)
+        const bedDoor = buildHingedDoor('bedroom', -1.5, -4.27, 0, false, null);
+        interactables.push({
+            mesh: bedDoor.mesh,
+            label: "Open / Close Bedroom Door",
+            range: 3.0,
+            action: () => toggleDoor('bedroom')
+        });
+
+        // Bathroom Door (Requires Rusty Bathroom Key)
+        const bathDoor = buildHingedDoor('bathroom', -1.5, 2.73, 0, false, "Locked. A tarnished tag hangs from the keyhole: 'BATH'.");
+        interactables.push({
+            mesh: bathDoor.mesh,
+            label: "Bathroom Door",
+            range: 3.0,
+            action: () => {
+                if (state.flags.bathUnlocked || state.keys.includes('Rusty Bathroom Key')) {
+                    if (!state.flags.bathUnlocked) {
+                        state.flags.bathUnlocked = true;
+                        showSubtitle("You unlocked the Bathroom door with the Rusty Key.");
+                    }
+                    toggleDoor('bathroom');
+                } else {
+                    audio.playClick(300);
+                    showSubtitle(bathDoor.lockedMsg);
+                }
+            }
+        });
+
+        // Study Door (Requires Study Key)
+        const studyDoor = buildHingedDoor('study', 1.5, 4.77, Math.PI, false, "Locked tight. Needs the Study Key.");
+        interactables.push({
+            mesh: studyDoor.mesh,
+            label: "Study Door",
+            range: 3.0,
+            action: () => {
+                if (state.flags.studyUnlocked || state.keys.includes('Study Key')) {
+                    if (!state.flags.studyUnlocked) {
+                        state.flags.studyUnlocked = true;
+                        showSubtitle("The Study lock clicks open.");
+                    }
+                    toggleDoor('study');
+                } else {
+                    audio.playClick(300);
+                    showSubtitle(studyDoor.lockedMsg);
+                }
+            }
+        });
+
+        function toggleDoor(id) {
+            const d = doors[id];
+            if (!d) return;
+            d.open = !d.open;
+            audio.playDoorCreak();
+            d.targetAngle = d.open ? d.baseAngle + Math.PI * 0.52 : d.baseAngle;
+        }
+
+        // ==========================================
+        // 6. DETAILED FURNITURE, PROPS & PRACTICAL LIGHTS
+        // ==========================================
+
+        // --- 1. BEDROOM PROPS ---
+        // Unmade Bed
+        createWall(-6.8, 0.35, -5.6, 2.4, 0.7, 1.8, new THREE.MeshStandardMaterial({ color: 0x332e2c, roughness: 0.9 }));
+        const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.18, 1.2), new THREE.MeshStandardMaterial({ color: 0x8a8a93, roughness: 0.95 }));
+        pillow.position.set(-7.6, 0.76, -5.6);
+        scene.add(pillow);
+
+        // Faint Moonlight leaking under bedroom window blinds
+        const windowMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.4), new THREE.MeshBasicMaterial({ color: 0x1e293b }));
+        windowMesh.rotation.y = Math.PI / 2;
+        windowMesh.position.set(-8.46, 1.75, -5.2);
+        scene.add(windowMesh);
+
+        const moonLight = new THREE.PointLight(0x64748b, 0.55, 7, 1.6);
+        moonLight.position.set(-7.8, 1.8, -5.2);
+        scene.add(moonLight);
+
+        // Nightstand + Rusty Bathroom Key + Note I
+        createWall(-7.5, 0.38, -4.1, 0.7, 0.76, 0.7, matDarkWood);
+        const keyMesh1 = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.24, 10), matBrass);
+        keyMesh1.rotation.z = Math.PI / 2;
+        keyMesh1.position.set(-7.42, 0.79, -4.0);
+        scene.add(keyMesh1);
+
+        const noteMesh1 = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.38), new THREE.MeshStandardMaterial({ color: 0xe7e5e4, roughness: 0.85 }));
+        noteMesh1.rotation.x = -Math.PI / 2;
+        noteMesh1.rotation.z = 0.25;
+        noteMesh1.position.set(-7.42, 0.77, -4.22);
+        scene.add(noteMesh1);
+
+        interactables.push({
+            mesh: keyMesh1,
+            label: "Take Rusty Bathroom Key",
+            range: 3.0,
+            action: () => {
+                if (!state.keys.includes('Rusty Bathroom Key')) {
+                    state.keys.push('Rusty Bathroom Key');
+                    keyMesh1.visible = false;
+                    updateHUD();
+                    audio.playClick(1100);
+                    showSubtitle("Picked up: Rusty Bathroom Key.");
+                }
+            }
+        });
+
+        interactables.push({
+            mesh: noteMesh1,
+            label: "Read Outpatient Intake Slip",
+            range: 3.0,
+            action: () => openFragment('frag_bedroom')
+        });
+
+        // Bedroom Wardrobe
+        createWall(-7.8, 1.15, -1.5, 0.9, 2.3, 1.6, matDarkWood);
+
+        // --- 2. CENTRAL HALLWAY PROPS ---
+        const hallLight = new THREE.PointLight(0xdbeafe, 0.75, 11, 1.6);
+        hallLight.position.set(0, 2.95, 0);
+        hallLight.castShadow = true;
+        scene.add(hallLight);
+
+        const tubeMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.2, 8), new THREE.MeshBasicMaterial({ color: 0xe0f2fe }));
+        tubeMesh.rotation.z = Math.PI / 2;
+        tubeMesh.rotation.y = Math.PI / 2;
+        tubeMesh.position.set(0, 3.12, 0);
+        scene.add(tubeMesh);
+
+        // Note II on Hallway Floorboard
+        const noteMesh2 = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.4), new THREE.MeshStandardMaterial({ color: 0xe7e5e4, roughness: 0.85 }));
+        noteMesh2.rotation.x = -Math.PI / 2;
+        noteMesh2.rotation.z = -0.35;
+        noteMesh2.position.set(0.35, 0.015, 1.4);
+        scene.add(noteMesh2);
+        interactables.push({
+            mesh: noteMesh2,
+            label: "Read Torn Eviction Notice",
+            range: 3.0,
+            action: () => openFragment('frag_hallway')
+        });
+
+        // Hallway Circuit Breaker Box (X = -1.38, Z = 0.6)
+        const hallBreakerMesh = createWall(-1.38, 1.45, 0.6, 0.14, 0.65, 0.48, new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.65, roughness: 0.35 }));
+        const hallBreakerLED = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 8), new THREE.MeshBasicMaterial({ color: 0x22c55e }));
+        hallBreakerLED.position.set(-1.3, 1.65, 0.6);
+        scene.add(hallBreakerLED);
+
+        interactables.push({
+            mesh: hallBreakerMesh,
+            label: "Inspect Hallway Circuit Breaker",
+            range: 3.0,
+            action: () => {
+                if (state.breakerTripped && !state.breakerRestored) {
+                    if (state.keys.includes('Breaker Key')) {
+                        state.breakerTripped = false;
+                        state.breakerRestored = true;
+                        hallBreakerLED.material.color.setHex(0x22c55e);
+                        audio.playClick(980);
+                        showSubtitle("You unlocked the breaker panel with the Breaker Key and restored power!");
+                    } else {
+                        audio.playClick(300);
+                        showSubtitle("The breaker box is padlocked! Needs the Breaker Key (Check Living Room).");
+                    }
+                } else {
+                    showSubtitle("Main apartment circuit breaker. Humming with high voltage.");
+                }
+            }
+        });
+
+        // Front Exit Door + Scratched Warning + 4-Digit Keypad (Z = 6.92)
+        const scratchedDoorMat = new THREE.MeshStandardMaterial({
+            map: ProceduralTextures.makeScratchedDoor(),
+            roughness: 0.65
+        });
+        const exitDoorMesh = createWall(0, 1.15, 6.92, 1.55, 2.3, 0.14, scratchedDoorMat);
+        const keypadMesh = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.38, 0.08), new THREE.MeshStandardMaterial({ color: 0x27272a, metalness: 0.7, roughness: 0.3 }));
+        keypadMesh.position.set(1.05, 1.35, 6.92);
+        scene.add(keypadMesh);
+
+        const exitRedLight = new THREE.PointLight(0xdc2626, 0.65, 4.8, 1.8);
+        exitRedLight.position.set(0, 2.45, 6.65);
+        scene.add(exitRedLight);
+
+        const keypadLED = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.05, 0.09), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        keypadLED.position.set(1.05, 1.46, 6.92);
+        scene.add(keypadLED);
+
+        interactables.push({
+            mesh: exitDoorMesh,
+            label: "Inspect Chained Exit Door",
+            range: 3.0,
+            action: () => openExitKeypad()
+        });
+        interactables.push({
+            mesh: keypadMesh,
+            label: "Enter 4-Digit Exit Keypad",
+            range: 3.0,
+            action: () => openExitKeypad()
+        });
+
+        // --- 3. BATHROOM PROPS ---
+        const bathLight = new THREE.PointLight(0xcbd5e1, 0.6, 8, 1.7);
+        bathLight.position.set(-5.0, 2.9, 3.8);
+        scene.add(bathLight);
+
+        // Sink Vanity & Toilet
+        createWall(-8.0, 0.45, 3.8, 0.7, 0.9, 1.3, new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.3 }));
+        createWall(-7.9, 0.35, 1.6, 0.75, 0.7, 0.55, new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25 }));
+
+        // Fogged Bathroom Mirror
+        const mirrorTex = ProceduralTextures.makeFoggedMirror(false);
+        const mirrorMat = new THREE.MeshStandardMaterial({ map: mirrorTex, roughness: 0.2, metalness: 0.6 });
+        const mirrorMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.95), mirrorMat);
+        mirrorMesh.rotation.y = Math.PI / 2;
+        mirrorMesh.position.set(-8.44, 1.55, 3.8);
+        scene.add(mirrorMesh);
+
+        // Mirror Shoulder Apparition Silhouette
+        const mirrorGhost = new THREE.Group();
+        const mgHead = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 10), new THREE.MeshBasicMaterial({ color: 0x050507 }));
+        mgHead.scale.set(0.85, 1.35, 0.85);
+        mgHead.rotation.z = 0.35;
+        mgHead.position.set(0, 0.25, 0);
+        const mgShoulders = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.35, 0.12), new THREE.MeshBasicMaterial({ color: 0x050507 }));
+        const mgEyeL = new THREE.Mesh(new THREE.SphereGeometry(0.015, 6, 6), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+        mgEyeL.position.set(-0.04, 0.27, 0.12);
+        const mgEyeR = new THREE.Mesh(new THREE.SphereGeometry(0.015, 6, 6), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+        mgEyeR.position.set(0.04, 0.27, 0.12);
+        mirrorGhost.add(mgHead, mgShoulders, mgEyeL, mgEyeR);
+        mirrorGhost.rotation.y = Math.PI / 2;
+        mirrorGhost.position.set(-8.42, 1.48, 4.02);
+        mirrorGhost.visible = false;
+        scene.add(mirrorGhost);
+
+        interactables.push({
+            mesh: mirrorMesh,
+            label: "Inspect Steamed Vanity Mirror",
+            range: 3.0,
+            action: () => {
+                if (!state.flags.mirrorRevealed) {
+                    state.flags.mirrorRevealed = true;
+                    mirrorMat.map = ProceduralTextures.makeFoggedMirror(true);
+                    mirrorMat.needsUpdate = true;
+                    audio.playStinger();
+                    state.sanity = Math.max(0, state.sanity - 10);
+                    showSubtitle("Your flashlight warms the glass... '4 0' is written from inside the mirror.");
+                } else if (state.sanity < 65) {
+                    mirrorGhost.visible = true;
+                    audio.playStinger();
+                    state.sanity = Math.max(0, state.sanity - 8);
+                    showSubtitle("SOMETHING IS STANDING RIGHT BEHIND YOUR SHOULDER IN THE GLASS!");
+                    setTimeout(() => { mirrorGhost.visible = false; }, 1100);
+                } else {
+                    showSubtitle("The digits '4 0' stare back at you from the fogged glass.");
+                }
+            }
+        });
+
+        // Medicine Cabinet with Study Key & Note III
+        const medCab = createWall(-7.9, 1.45, 5.4, 0.45, 0.85, 0.75, new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.4 }));
+        interactables.push({
+            mesh: medCab,
+            label: "Search Medicine Cabinet",
+            range: 3.0,
+            action: () => {
+                if (!state.keys.includes('Study Key')) {
+                    state.keys.push('Study Key');
+                    updateHUD();
+                    audio.playClick(1050);
+                    showSubtitle("Found the Study Key taped behind the prescription bottles!");
+                }
+                openFragment('frag_bathroom');
+            }
+        });
+
+        // --- 4. LIVING ROOM PROPS & CRT TELEVISION ---
+        // Sofa / Armchair
+        createWall(4.8, 0.45, -3.5, 1.2, 0.9, 1.6, new THREE.MeshStandardMaterial({ color: 0x4a2a1d, roughness: 0.85 }));
+        // Coffee Table + Note IV + Breaker Key
+        createWall(6.5, 0.25, -3.5, 0.9, 0.5, 1.4, matDarkWood);
+        const noteMesh4 = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.4), new THREE.MeshStandardMaterial({ color: 0xe7e5e4, roughness: 0.85 }));
+        noteMesh4.rotation.x = -Math.PI / 2;
+        noteMesh4.position.set(6.5, 0.51, -3.35);
+        scene.add(noteMesh4);
+        interactables.push({
+            mesh: noteMesh4,
+            label: "Read Broadcast Log #04",
+            range: 3.0,
+            action: () => openFragment('frag_living')
+        });
+
+        const breakerKeyMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.22, 10), matBrass);
+        breakerKeyMesh.rotation.z = Math.PI / 2;
+        breakerKeyMesh.position.set(6.48, 0.52, -3.82);
+        scene.add(breakerKeyMesh);
+        interactables.push({
+            mesh: breakerKeyMesh,
+            label: "Take Breaker Key",
+            range: 3.0,
+            action: () => {
+                if (!state.keys.includes('Breaker Key')) {
+                    state.keys.push('Breaker Key');
+                    breakerKeyMesh.visible = false;
+                    updateHUD();
+                    audio.playClick(1120);
+                    showSubtitle("Picked up: Breaker Key (unlocks the hallway circuit box).");
+                }
+            }
+        });
+
+        // CRT TV Stand & Animated Static Screen
+        createWall(8.6, 0.35, -3.5, 0.9, 0.7, 1.5, matDarkWood);
+        const tvBox = createWall(8.6, 1.05, -3.5, 0.75, 0.7, 0.95, new THREE.MeshStandardMaterial({ color: 0x222226, roughness: 0.5 }));
+
+        const tvCanvas = document.createElement('canvas');
+        tvCanvas.width = 128;
+        tvCanvas.height = 96;
+        const tvCtx = tvCanvas.getContext('2d');
+        const tvTexture = new THREE.CanvasTexture(tvCanvas);
+
+        const tvScreen = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.76, 0.56),
+            new THREE.MeshBasicMaterial({ map: tvTexture })
+        );
+        tvScreen.rotation.y = -Math.PI / 2;
+        tvScreen.position.set(8.21, 1.05, -3.5);
+        scene.add(tvScreen);
+
+        const tvLight = new THREE.PointLight(0xbae6fd, 1.9, 12, 1.5);
+        tvLight.position.set(7.8, 1.15, -3.5);
+        tvLight.castShadow = true;
+        scene.add(tvLight);
+
+        interactables.push({
+            mesh: tvBox,
+            label: "Inspect CRT Television",
+            range: 3.0,
+            action: () => {
+                state.flags.tvInspected = true;
+                state.sanity = Math.max(0, state.sanity - 6);
+                audio.playClick(700);
+                showSubtitle("Through the blinding snow, two digits burn onto your retinas: '4 2'.");
+            }
+        });
+
+        // --- 5. STUDY PROPS ---
+        // Bookshelf
+        createWall(4.2, 1.15, 6.4, 2.2, 2.3, 0.65, matDarkWood);
+
+        // Oak Desk + Warm Desk Lamp + Brass Exit Key + Note V
+        createWall(6.5, 0.42, 4.2, 1.2, 0.84, 2.2, matDarkWood);
+
+        const deskLight = new THREE.PointLight(0xfde68a, 1.05, 8.0, 1.6);
+        deskLight.position.set(6.5, 1.35, 3.5);
+        scene.add(deskLight);
+
+        const exitKeyMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.28, 10), matBrass);
+        exitKeyMesh.rotation.z = Math.PI / 2;
+        exitKeyMesh.position.set(6.3, 0.87, 4.1);
+        scene.add(exitKeyMesh);
+
+        const noteMesh5 = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.4), new THREE.MeshStandardMaterial({ color: 0xe7e5e4, roughness: 0.85 }));
+        noteMesh5.rotation.x = -Math.PI / 2;
+        noteMesh5.position.set(6.4, 0.85, 4.6);
+        scene.add(noteMesh5);
+
+        interactables.push({
+            mesh: exitKeyMesh,
+            label: "Take Brass Exit Key",
+            range: 3.0,
+            action: () => {
+                if (!state.keys.includes('Brass Exit Key')) {
+                    state.keys.push('Brass Exit Key');
+                    exitKeyMesh.visible = false;
+                    updateHUD();
+                    audio.playClick(1200);
+                    showSubtitle("Acquired the Brass Exit Key! Suddenly, the apartment breakers trip!");
+                    triggerBlackoutEvent();
+                }
+            }
+        });
+
+        interactables.push({
+            mesh: noteMesh5,
+            label: "Read Reel-to-Reel Transcript",
+            range: 3.0,
+            action: () => openFragment('frag_study')
+        });
+
+        // ==========================================
+        // 7. REALISTIC FLASHLIGHT, BOUNCE LIGHT & DUST MOTES
+        // ==========================================
+        const flashlightRig = new THREE.Group();
+        scene.add(flashlightRig);
+
+        // Wide, bright, realistic flashlight SpotLight
+        const spotLight = new THREE.SpotLight(0xfff9f0, 3.2, 22, Math.PI / 4.2, 0.65, 1.35);
+        spotLight.castShadow = true;
+        spotLight.shadow.mapSize.width = 1024;
+        spotLight.shadow.mapSize.height = 1024;
+        spotLight.shadow.camera.near = 0.2;
+        spotLight.shadow.camera.far = 22;
+        spotLight.shadow.bias = -0.0005;
+        spotLight.map = cookieTex;
+
+        // Close-range bounce PointLight so nearby walls/doorframes are always legible
+        const bounceLight = new THREE.PointLight(0xd6d3d1, 0.45, 6.5, 1.5);
+
+        const spotTarget = new THREE.Object3D();
+        spotTarget.position.set(0, 0, -6);
+        flashlightRig.add(spotLight);
+        flashlightRig.add(bounceLight);
+        flashlightRig.add(spotTarget);
+        spotLight.target = spotTarget;
+
+        // Volumetric Dust Motes
+        const dustCount = 380;
+        const dustGeo = new THREE.BufferGeometry();
+        const dustPos = new Float32Array(dustCount * 3);
+        for (let i = 0; i < dustCount; i++) {
+            dustPos[i * 3] = (Math.random() - 0.5) * 18;
+            dustPos[i * 3 + 1] = 0.2 + Math.random() * 2.8;
+            dustPos[i * 3 + 2] = (Math.random() - 0.5) * 14;
+        }
+        dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+        const dustMat = new THREE.PointsMaterial({
+            color: 0xe2e8f0,
+            size: 0.025,
+            transparent: true,
+            opacity: 0.35
+        });
+        const dustPoints = new THREE.Points(dustGeo, dustMat);
+        scene.add(dustPoints);
+
+        // ==========================================
+        // 8. 'THE TALL MAN IN THE STATIC' (STALKER ENTITY)
+        // ==========================================
+        const shadowEntity = new THREE.Group();
+        const stalkerMat = new THREE.MeshStandardMaterial({
+            color: 0x050507,
+            roughness: 0.9,
+            metalness: 0.1
+        });
+
+        const torsoMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.11, 1.05, 10), stalkerMat);
+        torsoMesh.position.y = 1.45;
+        shadowEntity.add(torsoMesh);
+
+        const headGroup = new THREE.Group();
+        headGroup.position.set(0, 2.12, 0.04);
+        headGroup.rotation.z = 0.34;
+        const skullMesh = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12), stalkerMat);
+        skullMesh.scale.set(0.82, 1.38, 0.92);
+        headGroup.add(skullMesh);
+
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xfef9c3, transparent: true, opacity: 0.0 });
+        const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 6), eyeMat);
+        eyeL.position.set(-0.045, 0.02, 0.12);
+        const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 6), eyeMat);
+        eyeR.position.set(0.045, 0.02, 0.12);
+        headGroup.add(eyeL, eyeR);
+        shadowEntity.add(headGroup);
+
+        const armGeo = new THREE.CylinderGeometry(0.032, 0.022, 1.25, 8);
+        const leftArm = new THREE.Mesh(armGeo, stalkerMat);
+        leftArm.position.set(-0.21, 1.32, 0.05);
+        leftArm.rotation.z = 0.08;
+        leftArm.rotation.x = -0.12;
+        const rightArm = new THREE.Mesh(armGeo, stalkerMat);
+        rightArm.position.set(0.21, 1.32, 0.05);
+        rightArm.rotation.z = -0.08;
+        rightArm.rotation.x = -0.12;
+        shadowEntity.add(leftArm, rightArm);
+
+        const legGeo = new THREE.CylinderGeometry(0.045, 0.03, 1.0, 8);
+        const leftLeg = new THREE.Mesh(legGeo, stalkerMat);
+        leftLeg.position.set(-0.09, 0.5, 0);
+        const rightLeg = new THREE.Mesh(legGeo, stalkerMat);
+        rightLeg.position.set(0.09, 0.5, 0);
+        shadowEntity.add(leftLeg, rightLeg);
+
+        shadowEntity.position.set(0, 0, -4.5);
+        shadowEntity.visible = false;
+        scene.add(shadowEntity);
+
+        const PEEK_SPOTS = [
+            new THREE.Vector3(-1.1, 0, -3.5),
+            new THREE.Vector3(1.1, 0, -3.5),
+            new THREE.Vector3(-1.1, 0, 3.5),
+            new THREE.Vector3(0.0, 0, 5.2),
+            new THREE.Vector3(4.5, 0, -5.8)
+        ];
+
+        // ==========================================
+        // 9. UI MODALS, HUD & 4 DISTINCT ENDINGS
+        // ==========================================
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalTag = document.getElementById('modal-tag');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+        const modalFooter = document.getElementById('modal-footer');
+        const reticle = document.getElementById('reticle');
+        const interactPrompt = document.getElementById('interact-prompt');
+        const interactPromptText = document.getElementById('interact-prompt-text');
+
+        function showSubtitle(text, duration = 4200) {
+            const box = document.getElementById('subtitle-box');
+            const p = document.getElementById('subtitle-text');
+            p.textContent = text;
+            box.classList.remove('opacity-0');
+            if (state.subtitleTimeout) clearTimeout(state.subtitleTimeout);
+            state.subtitleTimeout = setTimeout(() => {
+                box.classList.add('opacity-0');
+            }, duration);
+        }
+
+        function updateHUD() {
+            const s = Math.round(state.sanity);
+            document.getElementById('hud-sanity-bar').style.width = `${s}%`;
+            document.getElementById('hud-sanity-val').textContent = `${s}%`;
+            document.getElementById('hud-battery-val').textContent = `${Math.round(state.battery)}%`;
+            document.getElementById('hud-stamina-bar').style.width = `${Math.round(state.stamina)}%`;
+            document.getElementById('hud-notes-count').textContent = state.collectedFragments.length;
+            document.getElementById('hud-keys').textContent = state.keys.length > 0 ? state.keys.join(', ') : 'None';
+        }
+
+        function releasePointerLockSafely() {
+            if (document.pointerLockElement && document.exitPointerLock) {
+                try { document.exitPointerLock(); } catch (e) {}
+            }
+        }
+
+        function requestPointerLockSafely() {
+            if (!document.pointerLockElement && renderer.domElement.requestPointerLock) {
+                try {
+                    const promise = renderer.domElement.requestPointerLock();
+                    if (promise && typeof promise.catch === 'function') {
+                        promise.catch(() => {});
+                    }
+                } catch (e) {}
+            }
+        }
+
+        function openModal({ tag, title, bodyHTML, buttons = [], allowClose = true }) {
+            state.paused = true;
+            releasePointerLockSafely();
+
+            modalTag.textContent = tag;
+            modalTitle.textContent = title;
+            modalBody.innerHTML = bodyHTML;
+            modalFooter.innerHTML = '';
+
+            document.getElementById('modal-close').style.display = allowClose ? 'block' : 'none';
+
+            buttons.forEach(b => {
+                const el = document.createElement('button');
+                el.className = `horror-btn px-4 py-2 rounded-xl text-xs font-bold tracking-wider uppercase cursor-pointer ${b.danger ? 'text-red-400 border-red-900/70' : 'text-zinc-200'}`;
+                el.textContent = b.label;
+                el.onclick = () => {
+                    audio.playClick();
+                    b.onClick();
+                };
+                modalFooter.appendChild(el);
+            });
+
+            modalOverlay.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            modalOverlay.classList.add('hidden');
+            state.paused = false;
+            if (!state.gameOver && state.started) {
+                requestPointerLockSafely();
+            }
+        }
+
+        document.getElementById('modal-close').onclick = () => {
+            audio.playClick();
+            closeModal();
+        };
+
+        function openFragment(fragId) {
+            const f = FRAGMENTS[fragId];
+            if (!f) return;
+            audio.playClick(620);
+
+            if (!state.collectedFragments.includes(fragId)) {
+                state.collectedFragments.push(fragId);
+                updateHUD();
+            }
+
+            const isMad = state.sanity <= 40;
+            const text = (isMad ? f.mad : f.sane).replace(/\n/g, '<br>');
+
+            openModal({
+                tag: f.tag,
+                title: f.title,
+                bodyHTML: `
+                    <div class="p-5 rounded-xl bg-zinc-900/90 border ${isMad ? 'border-red-900/70 text-red-200' : 'border-zinc-800 text-zinc-200'} font-note text-base leading-relaxed shadow-inner">
+                        ${text}
+                    </div>
+                `,
+                buttons: [{ label: "Put Away", onClick: closeModal }]
+            });
+        }
+
+        function openJournalModal() {
+            audio.playClick();
+            if (state.collectedFragments.length === 0) {
+                openModal({
+                    tag: "MEMORY LOG",
+                    title: "Collected Notes (0/5)",
+                    bodyHTML: `<p class="text-zinc-400 italic">No documents collected yet. Search the rooms carefully.</p>`,
+                    buttons: [{ label: "Close", onClick: closeModal }]
+                });
+                return;
+            }
+
+            let html = `<div class="space-y-4">`;
+            state.collectedFragments.forEach(id => {
+                const f = FRAGMENTS[id];
+                const txt = (state.sanity <= 40 ? f.mad : f.sane).replace(/\n/g, '<br>');
+                html += `
+                    <div class="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800">
+                        <div class="text-[10px] uppercase tracking-widest text-zinc-500">${f.tag}</div>
+                        <div class="font-bold text-zinc-100 mt-0.5 mb-2">${f.title}</div>
+                        <div class="font-note text-sm text-zinc-300 leading-relaxed">${txt}</div>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+
+            openModal({
+                tag: "MEMORY LOG",
+                title: `Collected Notes (${state.collectedFragments.length}/5)`,
+                bodyHTML: html,
+                buttons: [{ label: "Close", onClick: closeModal }]
+            });
+        }
+
+        function triggerBlackoutEvent() {
+            state.breakerTripped = true;
+            hallBreakerLED.material.color.setHex(0xef4444);
+            audio.playStinger();
+            state.sanity = Math.max(0, state.sanity - 8);
+        }
+
+        function openExitKeypad() {
+            const hasBrassKey = state.keys.includes('Brass Exit Key');
+            openModal({
+                tag: "APARTMENT 4B • EXIT SECURITY",
+                title: "Front Door Keypad & Deadbolt",
+                bodyHTML: `
+                    <p class="text-xs text-zinc-400">Enter the 4-digit override code to disengage the magnetic chain:</p>
+                    <div class="flex justify-center my-4">
+                        <input id="exit-code-input" type="text" maxlength="4" placeholder="----"
+                            class="w-44 text-center text-2xl tracking-[0.45em] font-bold bg-zinc-900 border border-zinc-700 rounded-xl py-3 text-zinc-100 focus:outline-none focus:border-zinc-400" />
+                    </div>
+                    <p class="text-xs text-center ${hasBrassKey ? 'text-emerald-400' : 'text-amber-400'}">
+                        ${hasBrassKey ? '✓ Brass Exit Key Ready' : '✕ Missing Brass Exit Key (Check Study)'}
+                    </p>
+                    <p id="exit-code-msg" class="text-xs text-center text-red-400 h-4 mt-1"></p>
+                `,
+                buttons: [
+                    {
+                        label: "Unlock & Escape",
+                        onClick: () => {
+                            const code = document.getElementById('exit-code-input').value.trim();
+                            const msgEl = document.getElementById('exit-code-msg');
+                            if (code !== '4042') {
+                                audio.playClick(260);
+                                msgEl.textContent = "INVALID CODE. (Hint: Bathroom mirror + Living room TV/notes)";
+                                return;
+                            }
+                            if (!hasBrassKey) {
+                                audio.playClick(260);
+                                msgEl.textContent = "CODE ACCEPTED, BUT DEADBOLT REQUIRES BRASS EXIT KEY.";
+                                return;
+                            }
+
+                            keypadLED.material.color.setHex(0x22c55e);
+
+                            if (state.sanity >= 50) {
+                                triggerEnding('ending_lucid');
+                            } else {
+                                triggerEnding('ending_fractured');
+                            }
+                        }
+                    },
+                    {
+                        label: "Refuse & Stay in Room 4",
+                        danger: true,
+                        onClick: () => {
+                            triggerEnding('ending_anchor');
+                        }
+                    },
+                    { label: "Step Back", onClick: closeModal }
+                ]
+            });
+            setTimeout(() => {
+                const inp = document.getElementById('exit-code-input');
+                if (inp) inp.focus();
+            }, 60);
+        }
+
+        function triggerEnding(type) {
+            state.gameOver = true;
+            audio.playStinger();
+
+            const endings = {
+                ending_lucid: {
+                    tag: "ENDING I OF IV • AWAKENING / LUCID ESCAPE",
+                    title: "COLD MORNING AIR",
+                    desc: "The magnetic chain drops. You turn the Brass Key, wrench the heavy oak door open, and sprint down the concrete stairwell into the gray dawn. Behind you, Apartment 4B seals shut, swallowing the hum of Channel 04."
+                },
+                ending_fractured: {
+                    tag: "ENDING II OF IV • FRACTURED ESCAPE",
+                    title: "STATIC BEYOND THE THRESHOLD",
+                    desc: "Your trembling hands barely turn the key. You stumble through the exit door into the stairwell—only to realize the sky outside the landing window is monochrome television snow. You carried Channel 04 out with you."
+                },
+                ending_consumed: {
+                    tag: "ENDING III OF IV • CONSUMED BY THE STATIC",
+                    title: "PART OF THE BROADCAST",
+                    desc: "Your lucidity shatters in the dark. As The Tall Man closes the final inch between you, your vision dissolves into blinding scanlines. You are no longer watching Channel 04—you are trapped inside the signal forever."
+                },
+                ending_anchor: {
+                    tag: "ENDING IV OF IV • THE ANCHOR",
+                    title: "STAY IN ROOM 4",
+                    desc: "You pull your hand back from the deadbolt and let the chain stay latched. Whatever is trapped inside Apartment 4B needs an anchor so it never reaches the city outside. You sit back down in the armchair and watch the snow."
+                }
+            };
+
+            const e = endings[type];
+            openModal({
+                tag: e.tag,
+                title: e.title,
+                allowClose: false,
+                bodyHTML: `
+                    <p class="text-zinc-200 text-sm sm:text-base leading-relaxed">${e.desc}</p>
+                    <div class="pt-4 border-t border-zinc-800 flex justify-between text-xs text-zinc-500">
+                        <span>Final Lucidity: ${Math.round(state.sanity)}%</span>
+                        <span>Notes Found: ${state.collectedFragments.length}/5</span>
+                    </div>
+                `,
+                buttons: [{ label: "Play Again", onClick: () => location.reload() }]
+            });
+        }
+
+        function openPauseMenu() {
+            openModal({
+                tag: "SYSTEM • PAUSED",
+                title: "THE STATIC IN ROOM 4",
+                bodyHTML: `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs text-zinc-400 uppercase tracking-wider mb-2">Mouse Look Sensitivity</label>
+                            <input id="sens-slider" type="range" min="0.0008" max="0.005" step="0.0002" value="${state.mouseSensitivity}" class="w-full" />
+                        </div>
+                        <div class="text-xs text-zinc-400 space-y-1 bg-zinc-900/70 p-3.5 rounded-xl border border-zinc-800">
+                            <p><strong class="text-zinc-200">WASD / Arrows:</strong> Walk • <strong class="text-zinc-200">Shift:</strong> Sprint</p>
+                            <p><strong class="text-zinc-200">Mouse / Drag / Q & R:</strong> Look Around</p>
+                            <p><strong class="text-zinc-200">F:</strong> Flashlight / Whack Bulb • <strong class="text-zinc-200">E / Click:</strong> Inspect</p>
+                        </div>
+                    </div>
+                `,
+                buttons: [
+                    { label: "Restart", danger: true, onClick: () => location.reload() },
+                    { label: "Resume", onClick: closeModal }
+                ]
+            });
+
+            const slider = document.getElementById('sens-slider');
+            if (slider) {
+                slider.oninput = (e) => {
+                    state.mouseSensitivity = parseFloat(e.target.value);
+                };
+            }
+        }
+
+        // ==========================================
+        // 10. CONTROLS (POINTER LOCK + DRAG + KEYBOARD TURN + TOUCH)
+        // ==========================================
+        let mouseDownTime = 0;
+        let mouseMovedDist = 0;
+
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            if (!state.started || state.paused || state.gameOver) return;
+            state.input.isDraggingLook = true;
+            state.input.lastMouseX = e.clientX;
+            state.input.lastMouseY = e.clientY;
+            mouseDownTime = performance.now();
+            mouseMovedDist = 0;
+            requestPointerLockSafely();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!state.started || state.paused || state.gameOver) return;
+            if (document.pointerLockElement === renderer.domElement) {
+                state.player.yaw -= e.movementX * state.mouseSensitivity;
+                state.player.pitch -= e.movementY * state.mouseSensitivity;
+                state.player.pitch = Math.max(-Math.PI * 0.42, Math.min(Math.PI * 0.42, state.player.pitch));
+            } else if (state.input.isDraggingLook) {
+                const dx = e.clientX - state.input.lastMouseX;
+                const dy = e.clientY - state.input.lastMouseY;
+                mouseMovedDist += Math.hypot(dx, dy);
+                state.player.yaw -= dx * state.mouseSensitivity * 1.65;
+                state.player.pitch -= dy * state.mouseSensitivity * 1.65;
+                state.player.pitch = Math.max(-Math.PI * 0.42, Math.min(Math.PI * 0.42, state.player.pitch));
+            }
+            state.input.lastMouseX = e.clientX;
+            state.input.lastMouseY = e.clientY;
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (state.input.isDraggingLook) {
+                const heldMs = performance.now() - mouseDownTime;
+                if (heldMs < 240 && mouseMovedDist < 8 && !state.paused && !state.gameOver) {
+                    attemptInteract();
+                }
+            }
+            state.input.isDraggingLook = false;
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (!state.started || state.gameOver) return;
+            const k = e.key.toLowerCase();
+            state.input.keys[k] = true;
+
+            if (k === 'f' && !state.paused) toggleFlashlight();
+            else if (k === 'e' && !state.paused) attemptInteract();
+            else if (k === 'c' && !state.paused) state.player.crouching = !state.player.crouching;
+            else if (k === 'm') {
+                const muted = audio.toggleMute();
+                document.getElementById('hud-mute-text').textContent = muted ? "AUDIO: OFF" : "AUDIO: ON";
+            } else if (k === 'p') {
+                if (state.paused) closeModal();
+                else openPauseMenu();
+            } else if (k === 'j') {
+                if (state.paused) closeModal();
+                else openJournalModal();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            state.input.keys[e.key.toLowerCase()] = false;
+        });
+
+        function toggleFlashlight() {
+            if (state.battery <= 0) return;
+
+            if (state.flashlightSabotaged) {
+                audio.playFlashlightWhack();
+                state.sabotageTimer -= 1.25;
+                if (state.sabotageTimer <= 0) {
+                    state.flashlightSabotaged = false;
+                    state.flashlightOn = true;
+                    document.getElementById('hud-light-label').textContent = "[F] BEAM";
+                    document.getElementById('hud-light-label').className = "text-zinc-300 tracking-wider";
+                    showSubtitle("The bulb sputters back on!");
+                } else {
+                    showSubtitle("Keep hitting [F] to whack the dying bulb!");
+                }
+                return;
+            }
+
+            state.flashlightOn = !state.flashlightOn;
+            audio.playClick(950);
+            const dot = document.getElementById('hud-light-dot');
+            dot.className = state.flashlightOn
+                ? "w-2.5 h-2.5 rounded-full bg-amber-300 shadow-[0_0_8px_#fcd34d]"
+                : "w-2.5 h-2.5 rounded-full bg-zinc-600";
+        }
+
+        document.getElementById('btn-journal').onclick = () => { if (!state.gameOver) openJournalModal(); };
+        document.getElementById('btn-mute').onclick = () => {
+            const muted = audio.toggleMute();
+            document.getElementById('hud-mute-text').textContent = muted ? "AUDIO: OFF" : "AUDIO: ON";
+        };
+        document.getElementById('btn-pause').onclick = () => { if (!state.gameOver) openPauseMenu(); };
+
+        // Touch Controls
+        const moveZone = document.getElementById('touch-move-zone');
+        const moveKnob = document.getElementById('touch-move-knob');
+        moveZone.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const rect = moveZone.getBoundingClientRect();
+            const t = e.touches[0];
+            const dx = Math.max(-36, Math.min(36, t.clientX - (rect.left + rect.width / 2)));
+            const dy = Math.max(-36, Math.min(36, t.clientY - (rect.top + rect.height / 2)));
+            moveKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+            state.input.touchMove.x = dx / 36;
+            state.input.touchMove.y = dy / 36;
+        }, { passive: false });
+
+        moveZone.addEventListener('touchend', () => {
+            moveKnob.style.transform = `translate(0px, 0px)`;
+            state.input.touchMove.x = 0;
+            state.input.touchMove.y = 0;
+        });
+
+        document.getElementById('touch-btn-light').onclick = toggleFlashlight;
+        document.getElementById('touch-btn-interact').onclick = () => attemptInteract();
+
+        // Raycaster for Object Inspection
+        const raycaster = new THREE.Raycaster();
+        let currentLookTarget = null;
+
+        function updateRaycaster() {
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const meshes = interactables.filter(i => i.mesh.visible).map(i => i.mesh);
+            const hits = raycaster.intersectObjects(meshes, false);
+
+            currentLookTarget = null;
+            if (hits.length > 0) {
+                const hit = hits[0];
+                const found = interactables.find(i => i.mesh === hit.object);
+                if (found && hit.distance <= found.range) {
+                    currentLookTarget = found;
+                }
+            }
+
+            if (currentLookTarget) {
+                reticle.classList.add('interactive');
+                interactPrompt.classList.remove('hidden');
+                interactPromptText.textContent = `[E / CLICK] ${currentLookTarget.label}`;
+            } else {
+                reticle.classList.remove('interactive');
+                interactPrompt.classList.add('hidden');
+            }
+        }
+
+        function attemptInteract() {
+            if (currentLookTarget && !state.paused && !state.gameOver) {
+                currentLookTarget.action();
+            }
+        }
+
+        // ==========================================
+        // 11. COLLISION & ROOM DETECTION
+        // ==========================================
+        function canMoveTo(nx, nz) {
+            const r = 0.34;
+            for (const c of colliders) {
+                if (nx + r > c.minX && nx - r < c.maxX && nz + r > c.minZ && nz - r < c.maxZ) {
+                    return false;
+                }
+            }
+            for (const key in doors) {
+                const d = doors[key];
+                if (!d.open) {
+                    const dx = Math.abs(nx - d.pivot.position.x);
+                    const dz = Math.abs(nz - (d.pivot.position.z + (d.baseAngle === 0 ? 0.77 : -0.77)));
+                    if (dx < 0.38 && dz < 0.72) return false;
+                }
+            }
+            return true;
+        }
+
+        function detectRoomName(x, z) {
+            if (x < -1.5 && z < 0) return 'BEDROOM';
+            if (x < -1.5 && z >= 0) return 'BATHROOM';
+            if (x > 1.5 && z < 0.8) return 'LIVING ROOM';
+            if (x > 1.5 && z >= 0.8) return 'STUDY';
+            return 'HALLWAY';
+        }
+
+        // ==========================================
+        // 12. MAIN SIMULATION & RENDER LOOP
+        // ==========================================
+        function updateTVStatic() {
+            if (!tvCtx) return;
+            const imgData = tvCtx.createImageData(128, 96);
+            const buf = new Uint32Array(imgData.data.buffer);
+            for (let i = 0; i < buf.length; i++) {
+                const v = (Math.random() * 255) | 0;
+                buf[i] = (255 << 24) | (v << 16) | (v << 8) | v;
+            }
+            tvCtx.putImageData(imgData, 0, 0);
+            tvTexture.needsUpdate = true;
+            tvLight.intensity = 1.55 + Math.random() * 0.55;
+        }
+
+        function updateSimulation(dt, elapsed) {
+            updateTVStatic();
+
+            // Animate Hinged Doors
+            for (const key in doors) {
+                const d = doors[key];
+                d.pivot.rotation.y += (d.targetAngle - d.pivot.rotation.y) * Math.min(1, dt * 7.5);
+            }
+
+            // Drift Volumetric Dust Motes
+            const posArr = dustGeo.attributes.position.array;
+            for (let i = 0; i < dustCount; i++) {
+                posArr[i * 3 + 1] += Math.sin(elapsed * 0.7 + i) * 0.0008;
+                posArr[i * 3] += Math.cos(elapsed * 0.4 + i) * 0.0005;
+            }
+            dustGeo.attributes.position.needsUpdate = true;
+
+            if (!state.started || state.paused || state.gameOver) {
+                camera.position.copy(state.player.pos);
+                camera.rotation.set(state.player.pitch, state.player.yaw, 0);
+                flashlightRig.position.copy(camera.position);
+                flashlightRig.quaternion.copy(camera.quaternion);
+                return;
+            }
+
+            // Keyboard Turning Support (Q / R or Left / Right Arrows)
+            const k = state.input.keys;
+            const turnSpeed = 2.05;
+            if (k['q'] || k['arrowleft']) state.player.yaw += turnSpeed * dt;
+            if (k['r'] || k['arrowright']) state.player.yaw -= turnSpeed * dt;
+
+            // Player Movement (WASD / Up & Down Arrows)
+            let forwardInput = (k['w'] || k['arrowup'] ? 1 : 0) - (k['s'] || k['arrowdown'] ? 1 : 0) - state.input.touchMove.y;
+            let rightInput = (k['d'] ? 1 : 0) - (k['a'] ? 1 : 0) + state.input.touchMove.x;
+
+            const isMoving = Math.hypot(forwardInput, rightInput) > 0.05;
+            const wantsSprint = k['shift'] && isMoving && !state.player.crouching && state.stamina > 5;
+
+            if (wantsSprint) {
+                state.stamina = Math.max(0, state.stamina - 24 * dt);
+            } else {
+                state.stamina = Math.min(100, state.stamina + 16 * dt);
+            }
+
+            const moveSpeed = state.player.crouching ? 1.55 : (wantsSprint ? 4.2 : 2.75);
+
+            if (isMoving) {
+                const len = Math.hypot(forwardInput, rightInput);
+                forwardInput /= len;
+                rightInput /= len;
+
+                const sinY = Math.sin(state.player.yaw);
+                const cosY = Math.cos(state.player.yaw);
+
+                const vx = (-sinY * forwardInput + cosY * rightInput) * moveSpeed * dt;
+                const vz = (-cosY * forwardInput - sinY * rightInput) * moveSpeed * dt;
+
+                // Sliding AABB collision resolution on X and Z independently
+                if (canMoveTo(state.player.pos.x + vx, state.player.pos.z)) {
+                    state.player.pos.x += vx;
+                }
+                if (canMoveTo(state.player.pos.x, state.player.pos.z + vz)) {
+                    state.player.pos.z += vz;
+                }
+
+                state.player.bobTimer += dt * (wantsSprint ? 13 : 8.5);
+            } else {
+                state.player.bobTimer += dt * 1.5;
+            }
+
+            // Camera Height, Crouch & Head-Bob
+            const targetEyeH = state.player.crouching ? 1.05 : 1.65;
+            state.player.height += (targetEyeH - state.player.height) * Math.min(1, dt * 9);
+            const bobOffset = isMoving ? Math.sin(state.player.bobTimer) * 0.038 : Math.sin(state.player.bobTimer) * 0.006;
+
+            camera.position.set(state.player.pos.x, state.player.height + bobOffset, state.player.pos.z);
+            camera.rotation.set(state.player.pitch, state.player.yaw, 0);
+
+            // Inertial Flashlight Lag
+            flashlightRig.position.copy(camera.position);
+            flashlightRig.quaternion.slerp(camera.quaternion, Math.min(1, dt * 16));
+
+            // Flashlight Battery, Sabotage & Flicker
+            if (state.flashlightSabotaged) {
+                spotLight.intensity = Math.random() < 0.14 ? 0.65 : 0;
+                bounceLight.intensity = 0.25;
+                state.sabotageTimer -= dt;
+                if (state.sabotageTimer <= 0) {
+                    state.flashlightSabotaged = false;
+                    state.flashlightOn = true;
+                    document.getElementById('hud-light-label').textContent = "[F] BEAM";
+                    document.getElementById('hud-light-label').className = "text-zinc-300 tracking-wider";
+                }
+            } else if (state.flashlightOn) {
+                state.battery = Math.max(0, state.battery - 0.38 * dt);
+                if (state.battery <= 0) {
+                    state.flashlightOn = false;
+                    showSubtitle("Your flashlight battery died...");
+                }
+                const lowFlicker = (state.battery < 22 || state.sanity < 45) && Math.random() < 0.1 ? 0.35 : 1.0;
+                spotLight.intensity = 3.2 * lowFlicker;
+                bounceLight.intensity = 0.45;
+            } else {
+                spotLight.intensity = 0;
+                bounceLight.intensity = 0.28;
+            }
+
+            // Room Practical Lights (Affected by Circuit Breaker Blackout)
+            if (state.breakerTripped) {
+                hallLight.intensity = 0.08;
+                bathLight.intensity = 0.08;
+                deskLight.intensity = 0.12;
+            } else {
+                hallLight.intensity = Math.random() < 0.04 ? 0.15 : 0.72;
+                bathLight.intensity = Math.random() < 0.06 ? 0.2 : 0.58;
+                deskLight.intensity = 1.05;
+            }
+
+            // Room Detection & Sanity Drain
+            const roomName = detectRoomName(state.player.pos.x, state.player.pos.z);
+            document.getElementById('hud-room').textContent = roomName;
+
+            // Sudden Hallway Door Slam Event
+            if (!state.flags.hallwaySlamTriggered && roomName === 'HALLWAY' && state.player.pos.z > 0.5) {
+                state.flags.hallwaySlamTriggered = true;
+                if (doors.bedroom && doors.bedroom.open) {
+                    doors.bedroom.open = false;
+                    doors.bedroom.targetAngle = doors.bedroom.baseAngle;
+                }
+                audio.playDoorSlam();
+                state.sanity = Math.max(0, state.sanity - 7);
+                showSubtitle("THE BEDROOM DOOR SLAMS SHUT BEHIND YOU!");
+            }
+
+            const tvDist = state.player.pos.distanceTo(new THREE.Vector3(8.2, 1.1, -3.5));
+            const bathDist = state.player.pos.distanceTo(new THREE.Vector3(-7.9, 1.0, 3.8));
+
+            let sanityDrain = (state.flashlightOn && !state.flashlightSabotaged) ? 0.25 : 1.05;
+            if (state.breakerTripped) sanityDrain += 0.75;
+            if (tvDist < 3.5) sanityDrain += 0.45;
+
+            state.sanity = Math.max(0, state.sanity - sanityDrain * dt);
+
+            if (state.sanity <= 0 && !state.gameOver) {
+                triggerEnding('ending_consumed');
+                return;
+            }
+
+            // Creeping Blood/Shadow Tendrils & Chromatic Glitch at Low Sanity
+            const veinOverlay = document.getElementById('vein-overlay');
+            if (state.sanity < 55) {
+                veinOverlay.style.opacity = Math.min(0.92, ((55 - state.sanity) / 55) * 0.92).toFixed(2);
+            } else {
+                veinOverlay.style.opacity = '0';
+            }
+
+            if (state.sanity < 42 && Math.random() < 0.02) {
+                document.body.classList.add('sanity-distort');
+                setTimeout(() => document.body.classList.remove('sanity-distort'), 220);
+            }
+
+            // ==========================================
+            // MULTI-PHASE STALKER AI ('THE TALL MAN IN THE STATIC')
+            // ==========================================
+            if (state.stalker.lungeCooldown > 0) state.stalker.lungeCooldown -= dt;
+            state.stalker.phase = (state.sanity < 62 || state.breakerTripped) ? 2 : 1;
+
+            const forwardDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+
+            if (state.stalker.phase === 1) {
+                if (!state.stalker.active) {
+                    state.stalker.peekTimer -= dt;
+                    if (state.stalker.peekTimer <= 0) {
+                        const candidates = PEEK_SPOTS.filter(p => p.distanceTo(state.player.pos) > 3.5);
+                        if (candidates.length > 0) {
+                            const spot = candidates[Math.floor(Math.random() * candidates.length)];
+                            shadowEntity.position.copy(spot);
+                            shadowEntity.lookAt(state.player.pos.x, 0, state.player.pos.z);
+                            shadowEntity.visible = true;
+                            state.stalker.active = true;
+                            state.stalker.twitchTime = 0;
+                        }
+                        state.stalker.peekTimer = 14 + Math.random() * 8;
+                    }
+                } else {
+                    const toShadow = new THREE.Vector3().subVectors(shadowEntity.position, state.player.pos);
+                    const dist = toShadow.length();
+                    const dot = forwardDir.dot(toShadow.clone().normalize());
+
+                    eyeMat.opacity = (dot > 0.78 && state.flashlightOn && !state.flashlightSabotaged) ? 0.95 : 0.0;
+
+                    if (dot > 0.82 && state.flashlightOn && !state.flashlightSabotaged && dist < 12) {
+                        state.stalker.twitchTime += dt;
+                        headGroup.rotation.z = 0.34 + Math.sin(elapsed * 65) * 0.45;
+                        shadowEntity.position.x += (Math.random() - 0.5) * 0.08;
+                        if (state.stalker.twitchTime > 0.38) {
+                            shadowEntity.visible = false;
+                            state.stalker.active = false;
+                            audio.playWallScrape();
+                            state.sanity = Math.max(0, state.sanity - 4);
+                        }
+                    }
+                }
+            } else {
+                shadowEntity.visible = true;
+                state.stalker.active = true;
+
+                const toPlayer = new THREE.Vector3().subVectors(state.player.pos, shadowEntity.position);
+                const dist = toPlayer.length();
+                const dirToShadow = toPlayer.clone().negate().normalize();
+                const dot = forwardDir.dot(dirToShadow);
+
+                const isIlluminated = (dot > 0.76 && state.flashlightOn && !state.flashlightSabotaged && dist < 13);
+                eyeMat.opacity = isIlluminated ? 1.0 : 0.12;
+
+                if (isIlluminated) {
+                    headGroup.rotation.z = 0.34 + Math.sin(elapsed * 45) * 0.14;
+                } else if (dist > 1.35) {
+                    const speed = (state.flashlightSabotaged || !state.flashlightOn) ? 2.65 : 1.85;
+                    toPlayer.y = 0;
+                    toPlayer.normalize();
+                    shadowEntity.position.addScaledVector(toPlayer, speed * dt);
+                    shadowEntity.lookAt(state.player.pos.x, 0, state.player.pos.z);
+                    headGroup.rotation.z = 0.34;
+                } else if (state.stalker.lungeCooldown <= 0) {
+                    state.stalker.lungeCooldown = 14.0;
+                    state.sanity = Math.max(0, state.sanity - 25);
+                    audio.playStinger();
+
+                    const flashEl = document.getElementById('scare-flash');
+                    flashEl.style.display = 'flex';
+                    setTimeout(() => { flashEl.style.display = 'none'; }, 420);
+
+                    shadowEntity.position.set(0, 0, -5.8);
+                    showSubtitle("IT GRABBED YOUR SHOULDER—YOUR VISION BURNS WITH STATIC!");
+
+                    if (state.sanity <= 0 && !state.gameOver) {
+                        triggerEnding('ending_consumed');
+                        return;
+                    }
+                }
+            }
+
+            // Sensory Horror Events
+            state.whisperTimer -= dt;
+            if (state.whisperTimer <= 0 && state.sanity < 88) {
+                if (Math.random() < 0.55) {
+                    audio.playBehindWhisper();
+                    showSubtitle("Cold breath grazes the back of your neck...");
+                } else {
+                    audio.playWallScrape();
+                    showSubtitle("Something drags long fingernails inside the wall beside you...");
+                }
+                state.whisperTimer = 18 + Math.random() * 14;
+            }
+
+            // Flashlight Sabotage Event
+            state.sabotageCooldown -= dt;
+            if (state.sabotageCooldown <= 0 && state.flashlightOn && !state.flashlightSabotaged && state.sanity < 78) {
+                state.flashlightSabotaged = true;
+                state.sabotageTimer = 3.6;
+                audio.playClick(240);
+                document.getElementById('hud-light-label').textContent = "[F] WHACK BULB!";
+                document.getElementById('hud-light-label').className = "text-red-400 font-bold animate-pulse tracking-wider";
+                showSubtitle("THE FLASHLIGHT BULB DIED! PRESS [F] TO WHACK IT BACK ON!");
+                state.sabotageCooldown = 34 + Math.random() * 15;
+            }
+
+            // Phantom Door Knocks
+            state.phantomKnockTimer -= dt;
+            if (state.phantomKnockTimer <= 0 && state.sanity < 85) {
+                audio.playPhantomKnock();
+                showSubtitle("Three heavy knocks echo from inside the wardrobe...");
+                state.phantomKnockTimer = 22 + Math.random() * 14;
+            }
+
+            updateRaycaster();
+            updateHUD();
+            audio.update(dt, {
+                sanity: state.sanity,
+                tvDist,
+                bathDist,
+                isMoving,
+                isSprinting: wantsSprint,
+                roomName
+            });
+        }
+
+        let prevTime = performance.now();
+        function animate(now) {
+            const dt = Math.min(0.05, (now - prevTime) / 1000);
+            prevTime = now;
+
+            try {
+                updateSimulation(dt, now / 1000);
+                renderer.render(scene, camera);
+            } catch (err) {
+                showFatalError(`Render error: ${err.message}`);
+                return;
+            }
+            requestAnimationFrame(animate);
+        }
+
+        // ==========================================
+        // 13. RESIZE & STARTUP ON WINDOW LOAD
+        // ==========================================
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        window.onload = function () {
+            const titleScreen = document.getElementById('title-screen');
+            const enterBtn = document.getElementById('btn-enter-room');
+
+            enterBtn.addEventListener('click', () => {
+                audio.init();
+                audio.playClick(750);
+                titleScreen.classList.add('hidden');
+                document.getElementById('hud').classList.remove('hidden');
+                reticle.classList.remove('hidden');
+
+                if ('ontouchstart' in window || window.innerWidth < 768) {
+                    document.getElementById('mobile-touch-ui').classList.remove('hidden');
+                }
+
+                state.started = true;
+                showSubtitle("Apartment 4B... The front door is chained. Search the rooms for a way out.", 5500);
+                requestPointerLockSafely();
+            });
+
+            requestAnimationFrame(animate);
+        };
+    </script>
+</body>
+</html>
