@@ -9,3 +9,5 @@ https://cdn.jsdelivr.net/gh/haa430281-glitch/yoeygn@main/gnmath.svg
 https://gn-math.dev/
 
 https://noahsamazingtutoringhelp.github.io/Noahs-Calculus-Tutor/
+
+put MORE LINKS at the end of the url for more links
